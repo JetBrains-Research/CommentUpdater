@@ -1,0 +1,18 @@
+<idea-plugin>
+    <id>org.jetbrains.research.commentupdater</id>
+    <name>CommentUpdater</name>
+    <vendor>url="https://research.jetbrains.org/">JetBrains Research</vendor>
+
+    <description><![CDATA[
+     Detects outdated comments in Java code and suggests updates for them.
+    ]]>
+    </description>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <localInspection language="JAVA"
+                         displayName="The comment is outdated"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jetbrains.research.commentupdater.CodeCommentInspection"/>
+    </extensions>
+</idea-plugin>
