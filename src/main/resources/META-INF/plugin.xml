@@ -11,6 +11,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <localInspection language="JAVA"
                          displayName="The comment is outdated"
+                         groupName="Comment inconsistency"
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="org.jetbrains.research.commentupdater.CodeCommentInspection"/>
