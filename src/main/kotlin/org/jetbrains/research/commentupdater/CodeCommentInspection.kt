@@ -14,7 +14,6 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        //TODO: implement the visitor, check the methods that have comments, process the code and the related comment.
         return object : JavaElementVisitor() {
 
             override fun visitDocComment(comment: PsiDocComment?) {
@@ -24,16 +23,10 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                     if (comment.owner is PsiMethod) {
                         LOG.info("That's also a method comment for:" + (comment.owner as PsiMethod).name)
                         LOG.info(CodeCommentTokenizer.subTokenizeCode((comment.owner as PsiMethod).text).toString())
+                        LOG.info(MethodChangesExtractor.extract(comment.owner as PsiMethod)?.text ?: "")
                     }
                 }
-                CodeCommentTokenizer.createSample("", "")
                 super.visitDocComment(comment)
-            }
-
-            override fun visitMethod(method: PsiMethod?) {
-                LOG.info(CodeFeaturesExtractor.extractMethodFeatures(method!!, false).toString())
-                LOG.info(CodeFeaturesExtractor.extractMethodFeatures(method!!, true).toString())
-                super.visitMethod(method)
             }
         }
     }

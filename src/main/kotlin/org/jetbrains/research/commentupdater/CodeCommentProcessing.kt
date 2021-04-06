@@ -116,6 +116,17 @@ object CodeCommentTokenizer {
 
 
 object MethodFeaturesExtractor{
+    fun extractFullyQualifiedName(method: PsiMethod): String {
+        val classes = mutableListOf<String>()
+        classes.add(method.name)
+        var upperClass = method.containingClass
+        while (upperClass != null) {
+            classes.add(upperClass.name ?: "")
+            upperClass = upperClass.containingClass
+        }
+        return classes.reversed().joinToString(separator = ".")
+    }
+
     /**
      * Remove Comments from Method text
      */
@@ -152,11 +163,7 @@ object MethodFeaturesExtractor{
                 CodeCommentTokenizer.tokenizeCode(this)
             }
         }
-
-        val argumentNamesTokens = arguments.map {
-            it.second.tokens()
-        }.flatten()
-
+        
         return hashMapOf(
             "argument_name" to arguments.map {
                 it.second.tokens()
