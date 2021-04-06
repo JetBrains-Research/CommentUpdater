@@ -1,10 +1,14 @@
 package org.jetbrains.research.commentupdater
 
-import com.github.javaparser.JavaParser
-import com.github.javaparser.ParseProblemException
+import com.intellij.psi.PsiComment
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiReturnStatement
+import com.intellij.psi.javadoc.PsiDocComment
+import com.intellij.psi.search.PsiElementProcessor
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.util.containers.ContainerUtil
+import org.jetbrains.uast.util.isInstanceOf
 
 
 class CodeCommentAST {
@@ -21,7 +25,6 @@ data class CodeCommentSample(val comment: String,
 object CodeCommentTokenizer {
     private val REDUNDANT_TAGS = listOf("{", "}", "@code", "@docRoot", "@inheritDic", "@link", "@linkplain", "@value")
     private val COMMENT_TAGS = listOf("@return", "@ return", "@param", "@ param", "@throws", "@ throws")
-    private val javaParser = JavaParser()
 
     fun createSample(code: String, comment: String): CodeCommentSample {
         return CodeCommentSample(comment=comment, commentSubTokens = subTokenizeComment(comment), code=code, codeSubTokens = subTokenizeCode(code))
@@ -44,8 +47,8 @@ object CodeCommentTokenizer {
         var cleanedText = text
         if(removeTag) {
             cleanedText = removeTagString(cleanedText)
+            cleanedText = removeHTMLTag(cleanedText)
         }
-        cleanedText = removeHTMLTag(cleanedText)
         cleanedText = cleanedText.replace('\n', ' ')
         cleanedText = cleanedText.trim()
         return Regex("[a-zA-Z0-9]+|[^\\sa-zA-Z0-9]|[^_\\sa-zA-Z0-9]")
@@ -73,22 +76,6 @@ object CodeCommentTokenizer {
         return cleanedLine
     }
 
-    // todo: Should I really use JavaParser insede intellij plugin?
-    fun tokenizeCodeByJavaParser(code: String): List<String> {
-        val cu = try {
-            javaParser.parse(code).result
-        } catch (e: ParseProblemException) {
-            return listOf()
-        }
-        return if(cu.isPresent) {
-            cu.get().tokenRange.get().filter { !it.category.isWhitespaceOrComment}.map {
-                it.asString()
-            }
-        } else {
-            listOf()
-        }
-    }
-
     fun subTokenizeTokens(tokens: List<String>, lowerCase: Boolean): List<String> {
         val subTokens = mutableListOf<String>()
         for(token in tokens) {
@@ -107,7 +94,6 @@ object CodeCommentTokenizer {
 
     fun subTokenizeCode(code: String, lowerCase: Boolean = true): List<String> {
         val tokens = tokenizeCode(code)
-        // letter tokens separated from other symbols 'i' -> ', i, '
         val processedTokens = mutableListOf<String>()
         for(token in tokens) {
             processedTokens.addAll(
@@ -121,22 +107,22 @@ object CodeCommentTokenizer {
         return subTokenizeTokens(processedTokens, lowerCase)
     }
 
-
     fun tokenizeCode(code: String): List<String> {
-        val tokensByJavaParser = tokenizeCodeByJavaParser(code)
-        if (tokensByJavaParser.isEmpty()) {
-            // can't parse java code, use the same method as for comment
-            return tokenizeText(code, removeTag = false)
-        } else {
-            return tokensByJavaParser
-        }
+        return tokenizeText(code, removeTag = false)
     }
 }
 
 
 
 
-object CodeFeaturesExtractor{
+object MethodFeaturesExtractor{
+    /**
+     * Remove Comments from Method text
+     */
+    fun extractCode(method: PsiMethod): String {
+        return method.children.filter { it !is PsiComment }.joinToString (separator = "", transform={ it.text })
+    }
+
     fun extractArguments(method: PsiMethod): List<Pair<String, String>> {
         return method.parameterList.parameters.map {
             it.type.presentableText to it.name
