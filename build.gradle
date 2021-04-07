@@ -11,8 +11,13 @@ repositories {
     mavenCentral()
 }
 
+test {
+    useJUnitPlatform()
+}
+
 dependencies {
-    implementation "io.github.java-diff-utils:java-diff-utils:4.5"
+    implementation "io.github.java-diff-utils:java-diff-utils:4.9"
+    implementation 'org.junit.jupiter:junit-jupiter:5.7.0'
 }
 
 intellij {
