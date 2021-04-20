@@ -13,7 +13,7 @@ import com.intellij.psi.util.elementType
 object MethodChangesExtractor {
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.MethodChangesExtractor")
 
-    fun extract(method: PsiMethod): PsiMethod? {
+    fun getOldMethod(method: PsiMethod): PsiMethod? {
         val methodFullName = MethodFeaturesExtractor.extractFullyQualifiedName(method)
         val psiFile = method.containingFile
         val changeListManager = ChangeListManager.getInstance(psiFile.project)

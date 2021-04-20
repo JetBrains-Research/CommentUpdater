@@ -23,7 +23,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                     if (comment.owner is PsiMethod) {
                         LOG.info("That's also a method comment for:" + (comment.owner as PsiMethod).name)
                         LOG.info(CodeCommentTokenizer.subTokenizeCode((comment.owner as PsiMethod).text).toString())
-                        LOG.info(MethodChangesExtractor.extract(comment.owner as PsiMethod)?.text ?: "")
+                        LOG.info(MethodChangesExtractor.getOldMethod(comment.owner as PsiMethod)?.text ?: "")
                     }
                 }
                 super.visitDocComment(comment)
