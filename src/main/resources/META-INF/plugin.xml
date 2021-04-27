@@ -14,6 +14,6 @@
                          groupName="Comment inconsistency"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="org.jetbrains.research.commentupdater.CodeCommentInspection"/>
+                         implementationClass="org.jetbrains.research.commentupdater.inspection.CodeCommentInspection"/>
     </extensions>
 </idea-plugin>

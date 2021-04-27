@@ -71,6 +71,26 @@ object CodeCommentDiffs {
     val DELETE_KEYWORDS = listOf(DELETE, DELETE_END)
     val KEEP_KEYWORDS = listOf(KEEP, KEEP_END)
 
+    fun isInsert(token: String): Boolean {
+        return token in INSERT_KEYWORDS
+    }
+
+    fun isKeep(token: String): Boolean {
+        return token in KEEP_KEYWORDS
+    }
+
+    fun isReplace(token: String): Boolean {
+        return token in REPLACE_KEYWORDS
+    }
+
+    fun isDelete(token: String): Boolean {
+        return token in DELETE_KEYWORDS
+    }
+
+    fun isEdit(token: String): Boolean {
+        return isInsert(token) || isKeep(token) || isReplace(token) || isDelete(token)
+    }
+
     fun simpleDiff(oldTokens: List<String>, newTokens: List<String>) {
         print(DiffUtils.diff(oldTokens, newTokens, true))
     }
@@ -148,6 +168,7 @@ object CodeCommentDiffs {
         return getValidPositions(searchString, fullString).size
     }
 
+    // can be safely deleted, don't need this method for detection
     fun computeMinimalCommentDiffs(oldTokens: List<String>, newTokens: List<String>): List<String> {
         val spans = mutableListOf<String>()
         val tokens = mutableListOf<String>()
@@ -374,33 +395,38 @@ object CodeCommentDiffs {
         val tokens = mutableListOf<String>()
         val commands = mutableListOf<String>()
         for(delta in DiffUtils.diff(oldTokens, newTokens).deltas) {
-            if(delta.type == DeltaType.EQUAL) {
-                spans.addAll(listOf(KEEP) + delta.source.lines + listOf(KEEP_END))
-                for(token in delta.source.lines) {
-                    tokens.addAll(listOf(KEEP, token))
-                    commands.add(KEEP)
+            when (delta.type) {
+                DeltaType.EQUAL -> {
+                    spans.addAll(listOf(KEEP) + delta.source.lines + listOf(KEEP_END))
+                    for(token in delta.source.lines) {
+                        tokens.addAll(listOf(KEEP, token))
+                        commands.add(KEEP)
+                    }
                 }
-            } else if(delta.type == DeltaType.CHANGE) {
-                spans.addAll(listOf(REPLACE_OLD) + delta.source.lines + listOf(REPLACE_NEW) + delta.target.lines + listOf(REPLACE_END))
-                for(token in delta.source.lines) {
-                    tokens.addAll(listOf(REPLACE_OLD, token))
-                    commands.add(REPLACE_OLD)
+                DeltaType.CHANGE -> {
+                    spans.addAll(listOf(REPLACE_OLD) + delta.source.lines + listOf(REPLACE_NEW) + delta.target.lines + listOf(REPLACE_END))
+                    for(token in delta.source.lines) {
+                        tokens.addAll(listOf(REPLACE_OLD, token))
+                        commands.add(REPLACE_OLD)
+                    }
+                    for(token in delta.target.lines) {
+                        tokens.addAll(listOf(REPLACE_NEW, token))
+                        commands.addAll(listOf(REPLACE_NEW, token))
+                    }
                 }
-                for(token in delta.target.lines) {
-                    tokens.addAll(listOf(REPLACE_NEW, token))
-                    commands.addAll(listOf(REPLACE_NEW, token))
+                DeltaType.INSERT -> {
+                    spans.addAll(listOf(INSERT) + delta.target.lines + listOf(INSERT_END))
+                    for(token in delta.target.lines) {
+                        tokens.addAll(listOf(INSERT, token))
+                        commands.addAll(listOf(INSERT, token))
+                    }
                 }
-            } else if(delta.type == DeltaType.INSERT) {
-                spans.addAll(listOf(INSERT) + delta.target.lines + listOf(INSERT_END))
-                for(token in delta.target.lines) {
-                    tokens.addAll(listOf(INSERT, token))
-                    commands.addAll(listOf(INSERT, token))
-                }
-            } else {
-                spans.addAll(listOf(DELETE) + delta.source.lines + listOf(DELETE_END))
-                for(token in delta.source.lines) {
-                    tokens.addAll(listOf(DELETE, token))
-                    commands.addAll(listOf(DELETE, token))
+                else -> {
+                    spans.addAll(listOf(DELETE) + delta.source.lines + listOf(DELETE_END))
+                    for(token in delta.source.lines) {
+                        tokens.addAll(listOf(DELETE, token))
+                        commands.addAll(listOf(DELETE, token))
+                    }
                 }
             }
         }

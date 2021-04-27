@@ -1,34 +1,15 @@
-package org.jetbrains.research.commentupdater
+package org.jetbrains.research.commentupdater.processors
 
-import com.intellij.psi.PsiComment
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiReturnStatement
-import com.intellij.psi.javadoc.PsiDocComment
+import com.intellij.psi.*
+import com.intellij.psi.javadoc.PsiDocTag
+import com.intellij.psi.javadoc.PsiDocToken
 import com.intellij.psi.search.PsiElementProcessor
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.util.containers.ContainerUtil
-import org.jetbrains.uast.util.isInstanceOf
-
-
-class CodeCommentAST {
-    // todo: implement
-}
-
-data class CodeCommentSample(val comment: String,
-                             val commentSubTokens: List<String>,
-                             val code: String,
-                             val codeSubTokens: List<String>,
-                             val ast: CodeCommentAST? = null)
-
 
 object CodeCommentTokenizer {
     private val REDUNDANT_TAGS = listOf("{", "}", "@code", "@docRoot", "@inheritDic", "@link", "@linkplain", "@value")
     private val COMMENT_TAGS = listOf("@return", "@ return", "@param", "@ param", "@throws", "@ throws")
 
-    fun createSample(code: String, comment: String): CodeCommentSample {
-        return CodeCommentSample(comment=comment, commentSubTokens = subTokenizeComment(comment), code=code, codeSubTokens = subTokenizeCode(code))
-    }
 
     fun subTokenizeComment(comment: String): List<String> {
         return subTokenizeText(comment, removeTag = true)
@@ -110,6 +91,16 @@ object CodeCommentTokenizer {
     fun tokenizeCode(code: String): List<String> {
         return tokenizeText(code, removeTag = false)
     }
+
+    fun extractMethodCode(method: PsiMethod): String {
+        return method.children.filter {
+            !PsiTreeUtil.instanceOf(it, PsiComment::class.java, PsiWhiteSpace::class.java,
+                PsiDocTag::class.java, PsiDocToken::class.java)
+        }.map {
+            it.text
+        }.joinToString(" ")
+    }
+
 }
 
 
