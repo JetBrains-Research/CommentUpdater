@@ -6,7 +6,17 @@ import ai.onnxruntime.OrtSession
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 import com.beust.klaxon.KlaxonException
+import com.intellij.lang.Language
+import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.util.PsiUtil
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
+import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
+import com.jetbrains.rd.util.string.print
+import com.jetbrains.rd.util.string.println
 import org.jetbrains.research.commentupdater.models.jit.JITModelFeatureExtractor
 import org.jetbrains.research.commentupdater.models.ONNXTensorUtils
 import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
@@ -14,6 +24,7 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import java.io.File
 import java.lang.Integer.min
+import java.lang.Math.exp
 
 
 data class DataSample(
@@ -34,6 +45,9 @@ data class DataSample(
 
 
 class JITDetector() {
+
+    private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.models.jit.JitDetector")
+
 
     val TRUE_PROB = 0.9
     val env: OrtEnvironment
@@ -136,7 +150,15 @@ class JITDetector() {
             "code_lens" to codeLensTensor,
             "code_features" to codeFeaturesTensor
         )
-        val probability = (session.run(inputs)[0] as OnnxTensor).floatBuffer.get(0)
+
+        val modelOut = (session.run(inputs)[0] as OnnxTensor)
+
+        val zeroSoftmax = kotlin.math.exp(modelOut.floatBuffer[0])
+        val oneSoftmax = kotlin.math.exp(modelOut.floatBuffer[1])
+        val probability = oneSoftmax / (zeroSoftmax + oneSoftmax)
+        
+        
+        LOG.info("Method: ${newMethod.name}, probability: ${probability}")
         return probability >= TRUE_PROB
     }
 
@@ -145,4 +167,3 @@ class JITDetector() {
     }
 
 }
-
