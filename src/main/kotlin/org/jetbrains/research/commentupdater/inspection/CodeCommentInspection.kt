@@ -20,6 +20,7 @@ import kotlin.io.path.ExperimentalPathApi
 
 
 class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
+
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.inspection.CodeCommentInspection")
     val detector = JITDetector()
 
@@ -27,6 +28,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
     var currentChanges: Change? = null
     var currentMethodsRefactorings = hashMapOf<String, MutableList<Refactoring>>()
 
+    val DESCRIPTION_TEMPLATE = "Inconsistent comment found"
 
     override fun inspectionStarted(session: LocalInspectionToolSession, isOnTheFly: Boolean) {
         LOG.info("Inspection started")
@@ -85,6 +87,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                         }
                         oldMethod?.let {
 
+                            // todo: compare whether oldMethod != newMethod
                             val prediction = detector.predict(oldMethod, newMethod)
 
                             val inconsistency =  if(prediction == null) {
@@ -93,6 +96,13 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                                 } else {
                                     prediction
                                 }
+
+                            if(inconsistency) {
+                                holder.registerProblem(
+                                    comment, DESCRIPTION_TEMPLATE
+                                )
+                            }
+
 
                             LOG.info("Predicted ${inconsistency}")
                         }
