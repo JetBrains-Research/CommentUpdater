@@ -46,14 +46,7 @@ object MethodChangesExtractor {
 
     // todo: move this function to method utils
     fun extractFullyQualifiedName(method: PsiMethod): String {
-        val classes = mutableListOf<String>()
-        classes.add(method.name)
-        var upperClass = method.containingClass
-        while (upperClass != null) {
-            classes.add(upperClass.name ?: "")
-            upperClass = upperClass.containingClass
-        }
-        return classes.reversed().joinToString(separator = ".")
+        return (method.containingClass?.qualifiedName ?: "") + "." + method.name
     }
 
 
