@@ -74,7 +74,7 @@ object RefactoringExtractor {
         return methodToRefactorings
     }
 
-    fun extract(psiFile: PsiFile, change: Change): List<Refactoring> {
+    fun extract(change: Change): List<Refactoring> {
         try {
             val oldContent = change.beforeRevision?.content ?: return listOf()
             val newContent = change.afterRevision?.content ?: return listOf()
