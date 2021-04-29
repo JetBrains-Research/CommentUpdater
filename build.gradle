@@ -23,13 +23,25 @@ dependencies {
     implementation "com.microsoft.onnxruntime:onnxruntime:1.7.0"
     implementation 'com.beust:klaxon:5.5'
     implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
+
+    implementation 'org.jetbrains.bio:viktor:1.1.0'
+
 }
 
 intellij {
     version = '2020.3'
-    plugins = ['com.intellij.java']
+    plugins 'java', 'git4idea'
 }
 
 buildSearchableOptions {
     enabled = false
+}
+
+tasks.runIde {
+//        val dataset: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\src\\test\\resources\\mock_data"
+//        val output: String =  "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\output"
+//        val config: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\config.json"
+        runIde.args "CommentUpdater"
+        runIde.jvmArgs "-Djava.awt.headless=true"
+        maxHeapSize = "20g"
 }
