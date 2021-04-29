@@ -8,12 +8,17 @@
     ]]>
     </description>
 
+    <depends>com.intellij.modules.java</depends>
+    <depends>Git4Idea</depends>
+
+
     <extensions defaultExtensionNs="com.intellij">
-        <localInspection language="JAVA"
-                         displayName="The comment is outdated"
-                         groupName="Comment inconsistency"
-                         enabledByDefault="true"
-                         level="WARNING"
-                         implementationClass="org.jetbrains.research.commentupdater.inspection.CodeCommentInspection"/>
+        <appStarter implementation="PluginRunner"/>
+<!--        <localInspection language="JAVA"-->
+<!--                         displayName="The comment is outdated"-->
+<!--                         groupName="Comment inconsistency"-->
+<!--                         enabledByDefault="true"-->
+<!--                         level="WARNING"-->
+<!--                         implementationClass="org.jetbrains.research.commentupdater.inspection.CodeCommentInspection"/>-->
     </extensions>
 </idea-plugin>

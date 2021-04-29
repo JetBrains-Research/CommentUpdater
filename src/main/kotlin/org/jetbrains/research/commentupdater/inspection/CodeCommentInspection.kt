@@ -41,7 +41,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
         // Extract Refactorings
         currentChanges?.let {
-            val refactorings = RefactoringExtractor.extract(session.file, it)
+            val refactorings = RefactoringExtractor.extract(it)
             currentMethodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
         }
 
