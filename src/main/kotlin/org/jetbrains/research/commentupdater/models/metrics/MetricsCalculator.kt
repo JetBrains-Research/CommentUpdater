@@ -3,10 +3,12 @@ package org.jetbrains.research.commentupdater.models
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.javadoc.PsiDocComment
 import org.jetbrains.research.commentupdater.CodeCommentDiffs
+import org.jetbrains.research.commentupdater.models.metrics.SimilarityModel
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
+import kotlin.math.absoluteValue
 
 
 data class MethodMetric(
@@ -31,7 +33,9 @@ data class MethodMetric(
     val oldNewChangedSimDist: Double
 )
 
-object MetricsCalculator {
+class MetricsCalculator {
+
+    val simModel: SimilarityModel = SimilarityModel()
 
     fun calculateMetrics(oldMethod: PsiMethod, newMethod: PsiMethod, comment: PsiDocComment,
     methodRefactorings: HashMap<String, MutableList<Refactoring>>): MethodMetric {
@@ -106,6 +110,46 @@ object MetricsCalculator {
 
         val percentageCommentIntersectionDelete: Double = deleteCommentIntersectionLen / commentLen.toDouble()
 
+        val oldCodeCommentSim = simModel.compute(
+            oldSubTokens,
+            commentSubTokens,
+            true,
+            false
+        )
+
+        val newCodeCommentSim = simModel.compute(
+            newSubTokens,
+            commentSubTokens,
+            true,
+            false
+        )
+
+        val newOldCodeCommentSimDistance = (oldCodeCommentSim - newCodeCommentSim).absoluteValue
+
+        val removedStatements = diffTokens.zipWithNext().filter {
+            it.first in listOf(CodeCommentDiffs.REPLACE_OLD, CodeCommentDiffs.DELETE)
+        }.map { it.second }
+
+        val addedStatements = diffTokens.zipWithNext().filter {
+            it.first in listOf(CodeCommentDiffs.REPLACE_NEW, CodeCommentDiffs.INSERT)
+        }.map { it.second }
+
+        val oldChangedCommentSim = simModel.compute(
+            removedStatements,
+            commentSubTokens,
+            true,
+            false
+        )
+
+        val newChangedCommentSim = simModel.compute(
+            addedStatements,
+            commentSubTokens,
+            true,
+            false
+        )
+
+        val oldNewChangedSimDist = (newChangedCommentSim - oldChangedCommentSim).absoluteValue
+
         return MethodMetric(
             isRenamed = isRenamed,
             isParamAdded = isParamAdded,
@@ -120,12 +164,12 @@ object MetricsCalculator {
             percentageCodeChanged = percentageCodeChanged,
             deleteCommentIntersectionLen = deleteCommentIntersectionLen,
             percentageCommentIntersectionDelete = percentageCommentIntersectionDelete,
-            oldCodeCommentSim = 0.0,
-            newCodeCommentSim = 0.0,
-            newOldCodeCommentSimDistance = 0.0,
-            oldChangedCommentSim = 0.0,
-            newChangedCommentSim = 0.0,
-            oldNewChangedSimDist = 0.0
+            oldCodeCommentSim = oldCodeCommentSim,
+            newCodeCommentSim = newCodeCommentSim,
+            newOldCodeCommentSimDistance = newOldCodeCommentSimDistance,
+            oldChangedCommentSim = oldChangedCommentSim,
+            newChangedCommentSim = newChangedCommentSim,
+            oldNewChangedSimDist = oldNewChangedSimDist
         )
     }
 }
