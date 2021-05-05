@@ -12,7 +12,14 @@ object CodeCommentTokenizer {
 
 
     fun subTokenizeComment(comment: String): List<String> {
-        return subTokenizeText(comment, removeTag = true)
+        val commentWithoutStars = comment.filter{it != '/' && it != '*'}
+        if(commentWithoutStars.trim().startsWith("@return")) {
+            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag=true)
+        }
+        if (commentWithoutStars.trim().startsWith("@param")) {
+            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag=true)
+        }
+        return subTokenizeText(commentWithoutStars, removeTag = false)
     }
 
     fun subTokenizeText(text: String, removeTag: Boolean = true, lowerCase: Boolean = true): List<String> {
@@ -21,7 +28,14 @@ object CodeCommentTokenizer {
     }
 
     fun tokenizeComment(comment: String): List<String> {
-        return tokenizeText(comment, removeTag = true)
+        val commentWithoutStars = comment.filter{it != '/' && it != '*'}
+        if(commentWithoutStars.trim().startsWith("@return")) {
+            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag=true)
+        }
+        if (commentWithoutStars.trim().startsWith("@param")) {
+            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag=true)
+        }
+        return tokenizeText(commentWithoutStars, removeTag = false)
     }
 
     fun tokenizeText(text: String, removeTag: Boolean = true): List<String> {
@@ -32,6 +46,7 @@ object CodeCommentTokenizer {
         }
         cleanedText = cleanedText.replace('\n', ' ')
         cleanedText = cleanedText.trim()
+
         return Regex("[a-zA-Z0-9]+|[^\\sa-zA-Z0-9]|[^_\\sa-zA-Z0-9]")
             .findAll(cleanedText)
             .map{

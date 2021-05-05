@@ -394,7 +394,7 @@ object CodeCommentDiffs {
         val spans = mutableListOf<String>()
         val tokens = mutableListOf<String>()
         val commands = mutableListOf<String>()
-        for(delta in DiffUtils.diff(oldTokens, newTokens).deltas) {
+        for(delta in DiffUtils.diff(oldTokens, newTokens, true).deltas) {
             when (delta.type) {
                 DeltaType.EQUAL -> {
                     spans.addAll(listOf(KEEP) + delta.source.lines + listOf(KEEP_END))

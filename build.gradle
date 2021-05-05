@@ -12,13 +12,8 @@ repositories {
     jcenter()
 }
 
-test {
-    useJUnitPlatform()
-}
-
 dependencies {
     implementation "io.github.java-diff-utils:java-diff-utils:4.9"
-    implementation 'org.junit.jupiter:junit-jupiter:5.7.0'
     implementation "io.kinference:inference:0.1.2"
     implementation "com.microsoft.onnxruntime:onnxruntime:1.7.0"
     implementation 'com.beust:klaxon:5.5'
@@ -26,12 +21,16 @@ dependencies {
 
     implementation 'org.jetbrains.bio:viktor:1.1.0'
 
+
+    testImplementation "org.jetbrains.kotlin:kotlin-test"
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
+
 }
 
 intellij {
     version = '2021.1'
     plugins 'java', 'git4idea'
-    plugins = ['com.intellij.java']
+    plugins = ['com.intellij.java', 'git4idea']
 }
 
 buildSearchableOptions {
@@ -42,7 +41,7 @@ tasks.runIde {
 //        val dataset: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\src\\test\\resources\\mock_data"
 //        val output: String =  "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\output"
 //        val config: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\config.json"
-        runIde.args "CommentUpdater"
-        runIde.jvmArgs "-Djava.awt.headless=true"
-        maxHeapSize = "20g"
+//        runIde.args "CommentUpdater"
+//        runIde.jvmArgs "-Djava.awt.headless=true"
+//        maxHeapSize = "20g"
 }

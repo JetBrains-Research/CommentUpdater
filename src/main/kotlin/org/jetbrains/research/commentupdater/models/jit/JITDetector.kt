@@ -49,7 +49,7 @@ class JITDetector() {
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.models.jit.JitDetector")
 
 
-    val TRUE_PROB = 0.9
+    val TRUE_PROB = 0.5
     val env: OrtEnvironment
     val session: OrtSession
 
@@ -117,7 +117,8 @@ class JITDetector() {
             maxCommentLen = embeddingConfig.maxNlLen
         )
 
-        val commentIds = getPaddedIds(commentSubTokens,
+        val commentIds = getPaddedIds(
+            commentSubTokens,
             vocab = embeddingConfig.commentVocab,
             padToSize = embeddingConfig.maxNlLen,
             paddingElement = getIdOrUnk(embeddingConfig.pad, embeddingConfig.commentVocab)
