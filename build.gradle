@@ -30,7 +30,6 @@ dependencies {
 intellij {
     version = '2021.1'
     plugins 'java', 'git4idea'
-    plugins = ['com.intellij.java', 'git4idea']
 }
 
 buildSearchableOptions {
