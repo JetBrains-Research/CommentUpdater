@@ -1,6 +1,7 @@
 import org.jetbrains.research.commentupdater.CodeCommentDiffs
-import org.junit.jupiter.api.Test
+//import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.Test
 
 class DiffTest{
 
