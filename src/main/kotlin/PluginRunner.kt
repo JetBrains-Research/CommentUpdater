@@ -22,11 +22,13 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
+import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
+import org.jetbrains.annotations.NotNull
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.refactoringminer.api.RefactoringType
 import java.util.concurrent.Executors
@@ -75,7 +77,6 @@ class PluginRunner: ApplicationStarter {
             GitRepositoryManager::class.java
         )
 
-        // This was super complicated
         // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
         // To understand why we should call addInitializationRequest
         vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
@@ -184,6 +185,11 @@ class PluginRunner: ApplicationStarter {
             }
         }
         return changedMethodPairs
+    }
+
+
+    fun walkRepo(repo: GitRepository): List<GitCommit> {
+        return GitHistoryUtils.history(repo.project, repo.root, "--all")
     }
 }
 
