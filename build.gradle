@@ -54,7 +54,7 @@ tasks.runIde {
 //        val dataset: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\src\\test\\resources\\mock_data"
 //        val output: String =  "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\output"
 //        val config: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\config.json"
-//        runIde.args "CommentUpdater"
-//        runIde.jvmArgs "-Djava.awt.headless=true"
-//        maxHeapSize = "20g"
+        runIde.args "CommentUpdater"
+        runIde.jvmArgs "-Djava.awt.headless=true"
+        maxHeapSize = "20g"
 }
