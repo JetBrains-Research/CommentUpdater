@@ -5,6 +5,7 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.vcs.test.VcsPlatformTest
 import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
+import junit.framework.TestCase
 import mygit.test.*
 import java.io.File
 
@@ -131,6 +132,99 @@ class GitTest : GitSingleRepoTest() {
         )
     }
 
+
+    // Massive, not unit test, may be divided into parts
+    fun `test get changes`() {
+        val file = File(projectPath, "test.java")
+        file.writeText("""
+            class sample {
+            }
+        """.trimIndent())
+        repo.addCommit("test")
+
+        // not unit testing!
+        var lastCommit = pluginRunner.walkRepo(repo).find {
+            it.id.toString() == repo.last()
+        }
+        assertNotNull(lastCommit)
+        assertEmpty(pluginRunner.getChanges(lastCommit!!, ".java"))
+
+
+        val newFile = File(projectPath, "test2.java")
+        newFile.writeText("""
+            class sample2 {
+            
+            }
+        """.trimIndent())
+
+        file.writeText("""
+            class sample {
+                public int function () {
+                    return 1;
+                }
+            }
+        """.trimIndent())
+        repo.addCommit("add function")
+        lastCommit = pluginRunner.walkRepo(repo).find {
+            it.id.toString() == repo.last()
+        }
+        assertNotNull(lastCommit)
+        assertEquals(pluginRunner.getChanges(lastCommit!!, ".java").map {
+                it.virtualFile?.name ?: ""
+            },
+            listOf("test.java")
+        )
+
+        newFile.writeText("""
+            class sample2 {
+                // some changes
+            }
+        """.trimIndent())
+
+        repo.addCommit("change new file")
+        lastCommit = pluginRunner.walkRepo(repo).find {
+            it.id.toString() == repo.last()
+        }
+        assertNotNull(lastCommit)
+        assertEquals(pluginRunner.getChanges(lastCommit!!, ".java").map {
+            it.virtualFile?.name ?: ""
+        },
+            listOf("test2.java")
+        )
+
+
+        file.writeText("""
+            class sample {
+                /**
+                * add doc comment
+                */
+                public int function () {
+                    return 1;
+                }
+            }
+        """.trimIndent())
+
+        newFile.writeText("""
+            class sample2 {
+                // some changes
+                public int function() {
+                    return 1;
+                }
+            }
+        """.trimIndent())
+
+        repo.addCommit("change new file and file")
+        lastCommit = pluginRunner.walkRepo(repo).find {
+            it.id.toString() == repo.last()
+        }
+        assertNotNull(lastCommit)
+        assertEquals(pluginRunner.getChanges(lastCommit!!, ".java").map {
+            it.virtualFile?.name ?: ""
+        }.sorted(),
+            listOf("test.java", "test2.java").sorted()
+        )
+
+    }
 
     fun GitRepository.logAll() {
         println(repo.log("--oneline --decorate --all --graph"))
