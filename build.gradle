@@ -7,12 +7,20 @@ plugins {
 group = "org.jetbrains.research.commentupdater"
 version = "1.0"
 
+
 repositories {
     mavenCentral()
     jcenter()
+    maven { url "https://www.jetbrains.com/intellij-repository/releases" }
+    maven { url "https://www.jetbrains.com/intellij-repository/snapshots" }
+    maven { url "https://jetbrains.bintray.com/intellij-third-party-dependencies" }
+    maven { url "https://www.myget.org/F/rd-snapshots/maven/" } // Required for VCSTesting
+    maven { url "$projectDir/libs" }
 }
 
 dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+
     implementation "io.github.java-diff-utils:java-diff-utils:4.9"
     implementation "io.kinference:inference:0.1.2"
     implementation "com.microsoft.onnxruntime:onnxruntime:1.7.0"
@@ -22,19 +30,25 @@ dependencies {
     implementation 'org.jetbrains.bio:viktor:1.1.0'
 
 
-    testImplementation "org.jetbrains.kotlin:kotlin-test"
-    testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
-
+    testImplementation 'com.jetbrains.intellij.platform:vcs-test-framework:201.7846.76'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+    testImplementation "junit:junit:4.11"
+    testCompile("org.assertj:assertj-core:3.11.1")
 }
 
+// See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version = '2021.1'
-    plugins 'java', 'git4idea'
+    version = '2020.1'
+    plugins 'git4idea', 'java'
 }
 
-buildSearchableOptions {
-    enabled = false
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
 }
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
 
 tasks.runIde {
 //        val dataset: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\src\\test\\resources\\mock_data"
