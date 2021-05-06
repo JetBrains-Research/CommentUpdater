@@ -1,15 +1,10 @@
-import com.esotericsoftware.minlog.Log
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vcs.changes.Change
-import com.intellij.openapi.progress.Task.Backgroundable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
@@ -28,12 +23,8 @@ import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
-import org.jetbrains.annotations.NotNull
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.refactoringminer.api.RefactoringType
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
 
@@ -81,18 +72,14 @@ class PluginRunner: ApplicationStarter {
         // To understand why we should call addInitializationRequest
         vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
             val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
-            println("Roots found: ${gitRoots.size}")
             for (root in gitRoots) {
                 val repo = gitRepoManager.getRepositoryForRoot(root)
                 if (repo != null) {
-                    repo
-                    GitHistoryUtils.history(project, root).forEach {
+                    repo // todo: debug purpose (suitable breakpoint line), remove in future
+                    walkRepo(repo).forEach {
                         commit ->
-                        commit.changes.filter{
-                            // Process only java file changes
-                            it.virtualFile?.name?.endsWith(".java") ?: false
-                        }.forEach {
-                            change ->
+                        getChanges(commit, ".java").forEach {
+                                change ->
 
                             println("Commit: ${commit.id} Filechanged: ${change.afterRevision?.file?.name ?: ""}")
 
@@ -121,48 +108,8 @@ class PluginRunner: ApplicationStarter {
         }
     }
 
-    fun extractChangedMethods(project: Project, change: Change): MutableList<Pair<PsiMethod, PsiMethod>> {
-        val before = change.beforeRevision?.content ?: return mutableListOf()
-        val after = change.afterRevision?.content ?: return mutableListOf()
-
-
-        // todo: ??? Should this be so weird?
-        lateinit var beforeFile: PsiFile
-        lateinit var afterFile: PsiFile
-        lateinit var beforeMethods: List<PsiMethod>
-        lateinit var afterMethods: List<Pair<String, PsiMethod>>
-        lateinit var oldNamesToMethods: HashMap<String, PsiMethod>
-        ApplicationManager.getApplication().runReadAction {
-            beforeFile = PsiFileFactory.getInstance(project).createFileFromText(
-                "before",
-                JavaFileType.INSTANCE,
-                before
-            )
-
-            afterFile = PsiFileFactory.getInstance(project).createFileFromText(
-                "after",
-                JavaFileType.INSTANCE,
-                after
-            )
-
-            beforeMethods = PsiTreeUtil.findChildrenOfType(beforeFile, PsiMethod::class.java).filter {
-                it.docComment != null
-            }
-            afterMethods = PsiTreeUtil.findChildrenOfType(afterFile, PsiMethod::class.java).filter {
-                it.docComment != null
-            }.map {
-                ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
-            }
-            oldNamesToMethods = hashMapOf<String, PsiMethod>(*beforeMethods.map {
-                ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
-            }.toTypedArray())
-
-        }
-
-
-
-
-        val renameMapping = hashMapOf(*RefactoringExtractor.extract(change).filter {
+    fun extractNameChanges(change: Change): HashMap<String, String> {
+        return hashMapOf(*RefactoringExtractor.extract(change).filter {
             it.refactoringType == RefactoringType.RENAME_METHOD
         }.map {
             val renameRefactoring = (it as RenameOperationRefactoring)
@@ -170,9 +117,21 @@ class PluginRunner: ApplicationStarter {
                     to
                     renameRefactoring.originalOperation.className + "." + renameRefactoring.originalOperation.name)
         }.toTypedArray())
+    }
+
+    fun extractChangedMethods(project: Project, change: Change): MutableList<Pair<PsiMethod, PsiMethod>> {
+        val before = change.beforeRevision?.content ?: return mutableListOf()
+        val after = change.afterRevision?.content ?: return mutableListOf()
+
+        val renameMapping = extractNameChanges(change)
 
         val changedMethodPairs = mutableListOf<Pair<PsiMethod, PsiMethod>>()
-        afterMethods.forEach {
+
+        val oldNamesToMethods = extractNamesToMethods(project, before)
+
+        val newMethods = extractMethodsWithNames(project, after)
+
+        newMethods.forEach {
             (afterName, it) ->
             val beforeName = if(renameMapping.containsKey(afterName)) {
                 renameMapping[afterName]
@@ -187,6 +146,64 @@ class PluginRunner: ApplicationStarter {
         return changedMethodPairs
     }
 
+    fun extractMethodsWithNames(project: Project, content: String): List<Pair<String, PsiMethod>> {
+        lateinit var psiFile: PsiFile
+        lateinit var methodsWithNames: List<Pair<String, PsiMethod>>
+
+        ApplicationManager.getApplication().runReadAction {
+            psiFile = PsiFileFactory.getInstance(project).createFileFromText(
+                "extractMethodsWithNamesFile",
+                JavaFileType.INSTANCE,
+                content
+            )
+
+            methodsWithNames = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
+                it.docComment != null
+            }.map {
+                ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
+            }
+        }
+
+        return methodsWithNames
+    }
+
+    fun extractNamesToMethods(project: Project, content: String): HashMap<String, PsiMethod> {
+        lateinit var psiFile: PsiFile
+        lateinit var methods: List<PsiMethod>
+        lateinit var namesToMethods: HashMap<String, PsiMethod>
+
+        ApplicationManager.getApplication().runReadAction {
+            psiFile = PsiFileFactory.getInstance(project).createFileFromText(
+                "extractNamesToMethodsFile",
+                JavaFileType.INSTANCE,
+                content
+            )
+
+            methods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
+                it.docComment != null
+            }
+
+            namesToMethods = hashMapOf<String, PsiMethod>(*methods.map {
+                ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
+            }.toTypedArray())
+
+        }
+
+        return namesToMethods
+    }
+
+    fun getChanges(commit: GitCommit, fileSuffix: String): List<Change> {
+        return commit.changes
+        .filter {
+            it.afterRevision != null
+                    &&
+            it.beforeRevision != null
+        }
+        .filter {
+            // not null and true
+            it.virtualFile?.name?.endsWith(fileSuffix) == true
+        }
+    }
 
     fun walkRepo(repo: GitRepository): List<GitCommit> {
         return GitHistoryUtils.history(repo.project, repo.root, "--all")
