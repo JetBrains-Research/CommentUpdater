@@ -2,6 +2,7 @@ import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.FileUtil.writeToFile
 import com.intellij.psi.PsiFileFactory
+import com.intellij.testFramework.UsefulTestCase
 import com.intellij.vcs.test.VcsPlatformTest
 import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
@@ -12,6 +13,17 @@ import java.io.File
 class GitTest : GitSingleRepoTest() {
 
     val pluginRunner = PluginRunner()
+
+
+    fun GitRepository.logAll() {
+        println(repo.log("--oneline --decorate --all --graph"))
+    }
+
+    fun writeAndCommit(file: File, content: String) {
+        file.writeText(content)
+        repo.add()
+        repo.commit(content)
+    }
 
     fun `test walk repo two simple branches`() {
         /*
@@ -226,14 +238,35 @@ class GitTest : GitSingleRepoTest() {
 
     }
 
-    fun GitRepository.logAll() {
-        println(repo.log("--oneline --decorate --all --graph"))
-    }
+    fun `test extract name changes one method simple renaming`() {
+        val file = File(projectPath, "test.java")
+        file.writeText("""
+            class A {
+                public int method(String a) {
+                    return a.size();
+                }
+            }
+        """.trimIndent())
+        repo.addCommit("method")
 
-    fun writeAndCommit(file: File, content: String) {
-        file.writeText(content)
-        repo.add()
-        repo.commit(content)
+        file.writeText("""
+            class A {
+                public int method1(String a) {
+                    return a.size();
+                }
+            }
+        """.trimIndent())
+        repo.addCommit("newMethod")
+        val lastCommit = pluginRunner.walkRepo(repo).find {
+            it.id.toString() == repo.last()
+        }
+        assertNotNull(lastCommit)
+
+        val changes = pluginRunner.getChanges(lastCommit!!, ".java")
+        assertSize(1, changes)
+        // todo: doesn't find any refactoring, UML model inside extract doesn't find any class either
+        // todo: maybe problem in creating temp files, should i make this on higher level?
+        assertEquals(hashMapOf("newMethod" to "method"), pluginRunner.extractNameChanges(changes[0]))
     }
 
 }
