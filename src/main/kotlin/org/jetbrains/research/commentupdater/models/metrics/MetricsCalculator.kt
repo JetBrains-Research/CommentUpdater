@@ -81,7 +81,6 @@ class MetricsCalculator {
         val oldCodeLen = oldSubTokens.size
         val newCodeLen = newSubTokens.size
 
-        // todo: should subtokenizer remove *, !, ... ? (now it doesn't)
         val commentSubTokens = CodeCommentTokenizer.subTokenizeComment(comment).filter(filterSubTokens)
 
         val commentLen = commentSubTokens.size
