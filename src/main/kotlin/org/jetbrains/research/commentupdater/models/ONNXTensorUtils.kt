@@ -5,7 +5,6 @@ import ai.onnxruntime.OrtEnvironment
 
 object ONNXTensorUtils {
 
-
     fun twoDListToTensor(data: List<List<Long>>, environment: OrtEnvironment): OnnxTensor? {
         if (data.isEmpty())
             throw Exception("Can't handle empty lists")

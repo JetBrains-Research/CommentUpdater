@@ -8,9 +8,9 @@ import com.intellij.openapi.vcs.changes.ChangeListManager
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocComment
 
-
 object MethodChangesExtractor {
-    private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.processors.MethodChangesExtractor")
+    private val LOG: Logger =
+        Logger.getInstance("#org.jetbrains.research.commentupdater.processors.MethodChangesExtractor")
 
     fun getOldMethod(method: PsiMethod, change: Change, oldName: String): PsiMethod? {
         val psiFile = method.containingFile

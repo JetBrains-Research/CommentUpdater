@@ -2,7 +2,6 @@ package org.jetbrains.research.commentupdater.models.config
 
 import com.beust.klaxon.Json
 
-
 data class EmbeddingConfig(
     @Json(name="max_code_len")
     val maxCodeLen: Int,

@@ -2,10 +2,8 @@ package org.jetbrains.research.commentupdater.inspection
 
 import com.intellij.codeInspection.*
 import com.intellij.openapi.vcs.changes.Change
-
-import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vcs.changes.ChangeListManager
-
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocComment
 import gr.uom.java.xmi.diff.*
@@ -18,10 +16,10 @@ import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import kotlin.io.path.ExperimentalPathApi
 
-
 class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
-    private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.inspection.CodeCommentInspection")
+    private val LOG: Logger =
+        Logger.getInstance("#org.jetbrains.research.commentupdater.inspection.CodeCommentInspection")
     val detector = JITDetector()
 
     var currentFile = ""
@@ -62,7 +60,6 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
             override fun visitDocComment(comment: PsiDocComment?) {
                 LOG.info("I am visiting DocComment inside $currentFile")
                 if (comment != null) {
-
                     LOG.info("Found comment" + comment.text)
                     if (comment.owner is PsiMethod) {
 
@@ -72,14 +69,11 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                         val newName = MethodChangesExtractor.extractFullyQualifiedName(newMethod)
                         val oldName = currentMethodsRefactorings.getOrElse(
                             newName
-                        ) { null } ?.
-                        filterIsInstance<RenameOperationRefactoring>() ?.getOrNull(0) ?.let {
+                        ) { null }?.filterIsInstance<RenameOperationRefactoring>()?.getOrNull(0)?.let {
                             it.originalOperation.className + "." + it.originalOperation.name
                         }
-                        val oldMethod = (oldName ?: newName).let {
-                            name ->
-                            currentChanges?.let {
-                                change ->
+                        val oldMethod = (oldName ?: newName).let { name ->
+                            currentChanges?.let { change ->
                                 val oldMethod = MethodChangesExtractor.getOldMethod(newMethod, change, name)
                                 LOG.info("NewMethod: $newName oldMethod: $name")
                                 oldMethod
@@ -90,19 +84,18 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                             // todo: compare whether oldMethod != newMethod
                             val prediction = detector.predict(oldMethod, newMethod)
 
-                            val inconsistency =  if(prediction == null) {
-                                    LOG.info("Prediction error!")
-                                    false
-                                } else {
-                                    prediction
-                                }
+                            val inconsistency = if (prediction == null) {
+                                LOG.info("Prediction error!")
+                                false
+                            } else {
+                                prediction
+                            }
 
-                            if(inconsistency) {
+                            if (inconsistency) {
                                 holder.registerProblem(
                                     comment, DESCRIPTION_TEMPLATE
                                 )
                             }
-
 
                             LOG.info("Predicted ${inconsistency}")
                         }
@@ -112,5 +105,4 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
             }
         }
     }
-
 }

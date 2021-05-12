@@ -11,7 +11,6 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import java.io.File
 import kotlin.math.pow
 
-
 class SimilarityModel {
 
     val embeddingConfig: EmbeddingConfig
@@ -29,7 +28,6 @@ class SimilarityModel {
         codeEmbeddingsSession = env.createSession(ModelFilesConfig.CODE_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
         commentEmbeddingSession = env.createSession(ModelFilesConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
     }
-
 
     fun compute(tokens1: List<String>, tokens2: List<String>, isCode1: Boolean, isCode2: Boolean): Double {
         val (vocab1, embeddings1) = if(isCode1) {

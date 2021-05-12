@@ -10,10 +10,9 @@ object CodeCommentTokenizer {
     private val REDUNDANT_TAGS = listOf("{", "}", "@code", "@docRoot", "@inheritDic", "@link", "@linkplain", "@value")
     private val COMMENT_TAGS = listOf("@return", "@ return", "@param", "@ param", "@throws", "@ throws")
 
-
     fun subTokenizeComment(comment: String): List<String> {
         val commentWithoutStars = comment.filter{it != '/' && it != '*'}
-        if(commentWithoutStars.trim().startsWith("@return")) {
+        if (commentWithoutStars.trim().startsWith("@return")) {
             return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag=true)
         }
         if (commentWithoutStars.trim().startsWith("@param")) {
@@ -29,7 +28,7 @@ object CodeCommentTokenizer {
 
     fun tokenizeComment(comment: String): List<String> {
         val commentWithoutStars = comment.filter{it != '/' && it != '*'}
-        if(commentWithoutStars.trim().startsWith("@return")) {
+        if (commentWithoutStars.trim().startsWith("@return")) {
             return listOf("@return") + tokenizeText(commentWithoutStars, removeTag=true)
         }
         if (commentWithoutStars.trim().startsWith("@param")) {
@@ -40,7 +39,7 @@ object CodeCommentTokenizer {
 
     fun tokenizeText(text: String, removeTag: Boolean = true): List<String> {
         var cleanedText = text
-        if(removeTag) {
+        if (removeTag) {
             cleanedText = removeTagString(cleanedText)
             cleanedText = removeHTMLTag(cleanedText)
         }
@@ -58,7 +57,7 @@ object CodeCommentTokenizer {
     private fun removeHTMLTag(line: String): String {
         val cleanRegex = Regex("<.*?>")
         var cleanedLine = line.replace(cleanRegex, "")
-        for(tag in REDUNDANT_TAGS) {
+        for (tag in REDUNDANT_TAGS) {
             cleanedLine = cleanedLine.replace(tag, "")
         }
         return cleanedLine
@@ -66,7 +65,7 @@ object CodeCommentTokenizer {
 
     private fun removeTagString(line: String): String {
         var cleanedLine = line
-        for(tag in COMMENT_TAGS) {
+        for (tag in COMMENT_TAGS) {
             cleanedLine = cleanedLine.replace(tag, "")
         }
         return cleanedLine
@@ -74,14 +73,14 @@ object CodeCommentTokenizer {
 
     fun subTokenizeTokens(tokens: List<String>, lowerCase: Boolean): List<String> {
         val subTokens = mutableListOf<String>()
-        for(token in tokens) {
+        for (token in tokens) {
             // Split tokens by lower case to upper case changes: [tokenABC] -> <token> <ABC>
             val curSubs = Regex("([a-z0-9])([A-Z])").replace(token.trim()) {
                 it.groupValues.get(1) + " " + it.groupValues.get(2)
             }.split(" ")
             subTokens.addAll(curSubs)
         }
-        return if(lowerCase) {
+        return if (lowerCase) {
             subTokens.map { it.toLowerCase() }
         } else {
             subTokens
@@ -91,7 +90,7 @@ object CodeCommentTokenizer {
     fun subTokenizeCode(code: String, lowerCase: Boolean = true): List<String> {
         val tokens = tokenizeCode(code)
         val processedTokens = mutableListOf<String>()
-        for(token in tokens) {
+        for (token in tokens) {
             processedTokens.addAll(
                 Regex("[a-zA-Z0-9]+|[^\\sa-zA-Z0-9]|[^_\\sa-zA-Z0-9]")
                     .findAll(token)

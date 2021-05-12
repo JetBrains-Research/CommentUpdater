@@ -1,9 +1,7 @@
 package org.jetbrains.research.commentupdater
 
-
 import com.github.difflib.DiffUtils
 import com.github.difflib.patch.DeltaType
-
 
 data class EditNode(val editType: String, val children: MutableList<String>, var prev: EditNode?, var next: EditNode?)
 
@@ -12,7 +10,6 @@ data class EditNode(val editType: String, val children: MutableList<String>, var
  * Python code translated to Kotlin
  */
 object CodeCommentDiffs {
-
 
     val REPLACE = "<REPLACE>"
     val REPLACE_OLD = "<REPLACE_OLD>"
@@ -42,7 +39,6 @@ object CodeCommentDiffs {
     val KEEP = "<KEEP>"
     val KEEP_END = "<KEEP_END>"
     val COPY_SEQUENCE = "<COPY_SEQUENCE>"
-
 
     val REPLACE_KEYWORDS = listOf(
     REPLACE,
@@ -185,28 +181,28 @@ object CodeCommentDiffs {
             } else if (node.editType == DELETE) {
 
                 val searchString = node.children.joinToString(" ")
-                if(getFrequency(searchString, oldText) == 1) {
+                if (getFrequency(searchString, oldText) == 1) {
                     node.children.add(0, DELETE)
                     newNodes.add(node)
                     continue
                 }
-                if(node.prev != null) {
+                if (node.prev != null) {
                     if (node.prev!!.editType == KEEP) {
                         val adoptedChildren = mutableListOf<String>()
                         var foundSubString = false
-                        while(!foundSubString and node.prev!!.children.isNotEmpty()) {
+                        while (!foundSubString and node.prev!!.children.isNotEmpty()) {
                             adoptedChildren.add(0, node.prev!!.children.removeLast())
                             foundSubString = getFrequency(
                                 (adoptedChildren + node.children).joinToString(" "),
                                 oldText
                             ) == 1
                         }
-                        if(foundSubString) {
+                        if (foundSubString) {
                             val newChildren = listOf(REPLACE_OLD_DELETE_KEEP_BEFORE) + adoptedChildren +
                                     node.children + listOf(REPLACE_NEW_DELETE_KEEP_BEFORE) + adoptedChildren
                             val newNode = EditNode(REPLACE, newChildren.toMutableList(), node.prev, node.next)
                             node.prev!!.next = newNode
-                            if(node.next != null) {
+                            if (node.next != null) {
                                 node.next!!.prev = newNode
                             }
                             newNodes.add(newNode)
@@ -217,11 +213,11 @@ object CodeCommentDiffs {
                     }
                 }
 
-                if(node.next != null) {
-                    if(node.next!!.editType == KEEP) {
+                if (node.next != null) {
+                    if (node.next!!.editType == KEEP) {
                         val adoptedChildren = mutableListOf<String>()
                         var foundSubString = false
-                        while(!foundSubString and node.next!!.children.isNotEmpty()) {
+                        while (!foundSubString and node.next!!.children.isNotEmpty()) {
                             adoptedChildren.add(node.next!!.children.removeFirst())
                             foundSubString = getFrequency(
                                 (node.children + adoptedChildren).joinToString(" "),
@@ -252,17 +248,17 @@ object CodeCommentDiffs {
                 val repNewChildren = node.children.slice(repId until node.children.size)
                 val searchString = repOldChildren.joinToString(" ")
 
-                if(getFrequency(searchString, oldText) == 1) {
+                if (getFrequency(searchString, oldText) == 1) {
                     node.children.add(0, REPLACE_OLD)
                     newNodes.add(node)
                     continue
                 }
 
-                if(node.prev != null) {
-                    if(node.prev!!.editType == KEEP) {
+                if (node.prev != null) {
+                    if (node.prev!!.editType == KEEP) {
                         val adoptedChildren = mutableListOf<String>()
                         var foundSubString = false
-                        while(!foundSubString and !node.prev!!.children.isEmpty()) {
+                        while (!foundSubString and !node.prev!!.children.isEmpty()) {
                             adoptedChildren.add(0, node.prev!!.children.removeLast())
                             foundSubString = getFrequency(
                                 (adoptedChildren + repOldChildren).joinToString(" "),
@@ -285,11 +281,11 @@ object CodeCommentDiffs {
                     }
                 }
 
-                if(node.next != null) {
+                if (node.next != null) {
                     if(node.next!!.editType == KEEP) {
                         val adoptedChildren = mutableListOf<String>()
                         var foundSubString = false
-                        while(!foundSubString and !node.next!!.children.isEmpty()) {
+                        while (!foundSubString and !node.next!!.children.isEmpty()) {
                             adoptedChildren.add(node.next!!.children.removeFirst())
                             foundSubString = getFrequency(
                                 (repOldChildren + adoptedChildren).joinToString(" "),
@@ -297,7 +293,7 @@ object CodeCommentDiffs {
                             ) == 1
                         }
 
-                        if(foundSubString) {
+                        if (foundSubString) {
                             val newChildren = listOf(REPLACE_OLD_KEEP_AFTER) + repOldChildren + adoptedChildren +
                                     listOf(REPLACE_NEW_KEEP_AFTER) + repNewChildren + adoptedChildren
                             val newNode = EditNode(REPLACE, newChildren.toMutableList(), node.prev, node.next)
@@ -315,24 +311,24 @@ object CodeCommentDiffs {
                     }
                 }
                 return  getFullReplaceSpan(oldTokens, newTokens)
-            } else if(node.editType == INSERT) {
-                if(node.prev != null) {
-                    if(node.prev!!.editType == KEEP) {
+            } else if (node.editType == INSERT) {
+                if (node.prev != null) {
+                    if (node.prev!!.editType == KEEP) {
                         val adoptedChildren = mutableListOf<String>()
                         var foundSubString = false
-                        while(!foundSubString and !node.prev!!.children.isEmpty()) {
+                        while (!foundSubString and !node.prev!!.children.isEmpty()) {
                             adoptedChildren.add(0, node.prev!!.children.removeLast())
                             foundSubString = getFrequency(
                                 (adoptedChildren).joinToString(" "),
                                 oldText
                             ) == 1
                         }
-                        if(foundSubString) {
+                        if (foundSubString) {
                             val newChildren = listOf(INSERT_OLD_KEEP_BEFORE) + adoptedChildren +
                                     listOf(INSERT_NEW_KEEP_BEFORE) + adoptedChildren + node.children
                             val newNode = EditNode(INSERT, newChildren.toMutableList(), node.prev, node.next)
                             node.prev!!.next = newNode
-                            if(node.next != null) {
+                            if (node.next != null) {
                                 node.next!!.prev = newNode
                             }
                             newNodes.add(newNode)
@@ -342,22 +338,22 @@ object CodeCommentDiffs {
                         }
                     }
                 }
-                if(node.next != null) {
-                    if(node.next!!.editType == KEEP) {
+                if (node.next != null) {
+                    if (node.next!!.editType == KEEP) {
                         val adoptedChildren = mutableListOf<String>()
                         var foundSubString = false
-                        while(!foundSubString and !node.next!!.children.isEmpty()) {
+                        while (!foundSubString and !node.next!!.children.isEmpty()) {
                             adoptedChildren.add(node.next!!.children.removeFirst())
                             foundSubString = getFrequency(
                                 adoptedChildren.joinToString(" "),
                                 oldText
                             ) == 1
                         }
-                        if(foundSubString) {
+                        if (foundSubString) {
                             val newChildren = listOf(INSERT_OLD_KEEP_AFTER) + adoptedChildren +
                                     listOf(INSERT_NEW_KEEP_AFTER) + node.children + adoptedChildren
                             val newNode = EditNode(INSERT, newChildren.toMutableList(), node.prev, node.next)
-                            if(node.prev != null) {
+                            if (node.prev != null) {
                                 node.prev!!.next = newNode
                             }
 
@@ -373,12 +369,12 @@ object CodeCommentDiffs {
                 return getFullReplaceSpan(oldTokens, newTokens)
             }
         }
-        for(node in newNodes) {
-            if(node.editType.contains("INSERT")) {
+        for (node in newNodes) {
+            if (node.editType.contains("INSERT")) {
                 spans.addAll(node.children + listOf(INSERT_END))
-            } else if(node.editType.contains("REPLACE")) {
+            } else if (node.editType.contains("REPLACE")) {
                 spans.addAll(node.children + listOf(REPLACE_END))
-            } else if(node.editType.contains("DELETE")) {
+            } else if (node.editType.contains("DELETE")) {
                 spans.addAll(node.children + listOf(DELETE_END))
             }
         }
@@ -398,32 +394,32 @@ object CodeCommentDiffs {
             when (delta.type) {
                 DeltaType.EQUAL -> {
                     spans.addAll(listOf(KEEP) + delta.source.lines + listOf(KEEP_END))
-                    for(token in delta.source.lines) {
+                    for (token in delta.source.lines) {
                         tokens.addAll(listOf(KEEP, token))
                         commands.add(KEEP)
                     }
                 }
                 DeltaType.CHANGE -> {
                     spans.addAll(listOf(REPLACE_OLD) + delta.source.lines + listOf(REPLACE_NEW) + delta.target.lines + listOf(REPLACE_END))
-                    for(token in delta.source.lines) {
+                    for (token in delta.source.lines) {
                         tokens.addAll(listOf(REPLACE_OLD, token))
                         commands.add(REPLACE_OLD)
                     }
-                    for(token in delta.target.lines) {
+                    for (token in delta.target.lines) {
                         tokens.addAll(listOf(REPLACE_NEW, token))
                         commands.addAll(listOf(REPLACE_NEW, token))
                     }
                 }
                 DeltaType.INSERT -> {
                     spans.addAll(listOf(INSERT) + delta.target.lines + listOf(INSERT_END))
-                    for(token in delta.target.lines) {
+                    for (token in delta.target.lines) {
                         tokens.addAll(listOf(INSERT, token))
                         commands.addAll(listOf(INSERT, token))
                     }
                 }
                 else -> {
                     spans.addAll(listOf(DELETE) + delta.source.lines + listOf(DELETE_END))
-                    for(token in delta.source.lines) {
+                    for (token in delta.source.lines) {
                         tokens.addAll(listOf(DELETE, token))
                         commands.addAll(listOf(DELETE, token))
                     }
