@@ -19,7 +19,7 @@ import kotlin.io.path.ExperimentalPathApi
 class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
     private val LOG: Logger =
-        Logger.getInstance("#org.jetbrains.research.commentupdater.inspection.CodeCommentInspection")
+        Logger.getInstance(javaClass)
     val detector = JITDetector()
 
     var currentFile = ""
@@ -58,15 +58,14 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
         return object : JavaElementVisitor() {
 
             override fun visitDocComment(comment: PsiDocComment?) {
-                LOG.info("I am visiting DocComment inside $currentFile")
                 if (comment != null) {
-                    LOG.info("Found comment" + comment.text)
                     if (comment.owner is PsiMethod) {
-
-                        LOG.info("Method for that comment:" + (comment.owner as PsiMethod).name)
 
                         val newMethod = (comment.owner as PsiMethod)
                         val newName = MethodChangesExtractor.extractFullyQualifiedName(newMethod)
+
+                        LOG.info("[CommentUpdater] Processing comment in method $newName in file $currentFile.")
+
                         val oldName = currentMethodsRefactorings.getOrElse(
                             newName
                         ) { null }?.filterIsInstance<RenameOperationRefactoring>()?.getOrNull(0)?.let {
@@ -75,7 +74,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                         val oldMethod = (oldName ?: newName).let { name ->
                             currentChanges?.let { change ->
                                 val oldMethod = MethodChangesExtractor.getOldMethod(newMethod, change, name)
-                                LOG.info("NewMethod: $newName oldMethod: $name")
+                                LOG.info("[CommentUpdater] Found old method with name: $name")
                                 oldMethod
                             }
                         }
@@ -85,7 +84,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                             val prediction = detector.predict(oldMethod, newMethod)
 
                             val inconsistency = if (prediction == null) {
-                                LOG.info("Prediction error!")
+                                LOG.info("[CommentUpdater] Prediction error!")
                                 false
                             } else {
                                 prediction
@@ -97,7 +96,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                                 )
                             }
 
-                            LOG.info("Predicted ${inconsistency}")
+                            LOG.info("[CommentUpdater] Predicted ${inconsistency}")
                         }
                     }
                 }

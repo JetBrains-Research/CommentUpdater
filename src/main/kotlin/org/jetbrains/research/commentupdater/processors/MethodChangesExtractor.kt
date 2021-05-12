@@ -10,7 +10,7 @@ import com.intellij.psi.javadoc.PsiDocComment
 
 object MethodChangesExtractor {
     private val LOG: Logger =
-        Logger.getInstance("#org.jetbrains.research.commentupdater.processors.MethodChangesExtractor")
+        Logger.getInstance(javaClass)
 
     fun getOldMethod(method: PsiMethod, change: Change, oldName: String): PsiMethod? {
         val psiFile = method.containingFile
@@ -39,7 +39,7 @@ object MethodChangesExtractor {
             )
             return oldMethod
         } catch (e: VcsException) {
-            LOG.error("[ACP] Failed to get a file's content from the last revision.", e.message)
+            LOG.error("[CommentUpdater] Failed to get a file's content from the last revision.", e.message)
         }
         return null
     }
@@ -80,7 +80,7 @@ object MethodChangesExtractor {
             )
             return oldMethod
         } catch (e: VcsException) {
-            LOG.error("[ACP] Failed to get a file's content from the last revision.", e.message)
+            LOG.error("[CommentUpdater] Failed to get a file's content from the last revision.", e.message)
         }
         return null
     }

@@ -42,7 +42,7 @@ data class DataSample(
 )
 
 class JITDetector {
-    private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.models.jit.JitDetector")
+    private val LOG: Logger = Logger.getInstance(javaClass)
 
     val TRUE_PROB = 0.5
     val env: OrtEnvironment
@@ -157,7 +157,7 @@ class JITDetector {
         val probability = oneSoftmax / (zeroSoftmax + oneSoftmax)
 
 
-        LOG.info("Method: ${newMethod.name}, probability: ${probability}")
+        LOG.info("[CommentUpdater] JIT model result: method ${newMethod.name}, probability: ${probability}")
         return probability >= TRUE_PROB
     }
 

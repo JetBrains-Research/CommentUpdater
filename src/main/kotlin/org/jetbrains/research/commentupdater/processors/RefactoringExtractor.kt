@@ -84,7 +84,7 @@ object RefactoringExtractor {
             }
 
         } catch (e: VcsException) {
-            LOG.error("[ACP] Failed to get a file's content from the last revision.", e.message)
+            LOG.error("[CommentUpdater] Failed to get a file's content from the last revision.", e.message)
         }
         return listOf()
     }
