@@ -10,6 +10,7 @@ import gr.uom.java.xmi.diff.*
 import org.jetbrains.research.commentupdater.JITDetector
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.refactorinsight.CommentUpdaterBundle
 import org.refactoringminer.api.Refactoring
 
@@ -57,7 +58,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                     if (comment.owner is PsiMethod) {
 
                         val newMethod = (comment.owner as PsiMethod)
-                        val newName = MethodChangesExtractor.extractFullyQualifiedName(newMethod)
+                        val newName = newMethod.qualifiedName
 
                         LOG.info("[CommentUpdater] Processing comment in method $newName in file $currentFile.")
 

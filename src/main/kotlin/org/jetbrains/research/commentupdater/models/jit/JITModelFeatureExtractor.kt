@@ -54,12 +54,6 @@ object JITModelFeatureExtractor {
         "try", "void", "volatile", "while"
     )
 
-    /**
-     * Remove Comments from Method text
-     */
-    fun extractCode(method: PsiMethod): String {
-        return method.children.filter { it !is PsiComment }.joinToString(separator = "", transform = { it.text })
-    }
 
     fun extractArguments(method: PsiMethod): List<Pair<String, String>> {
         return method.parameterList.parameters.map {
