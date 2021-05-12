@@ -7,15 +7,11 @@ import com.intellij.openapi.vcs.changes.ChangeListManager
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocComment
 import gr.uom.java.xmi.diff.*
-import org.jetbrains.research.commentupdater.CodeCommentDiffs
 import org.jetbrains.research.commentupdater.JITDetector
-import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.refactorinsight.CommentUpdaterBundle
 import org.refactoringminer.api.Refactoring
-import org.refactoringminer.api.RefactoringType
-import kotlin.io.path.ExperimentalPathApi
 
 class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -82,20 +78,20 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                             // todo: compare whether oldMethod != newMethod
                             val prediction = detector.predict(oldMethod, newMethod)
 
-                            val inconsistency = if (prediction == null) {
+                            val hasInconsistency = if (prediction == null) {
                                 LOG.info("[CommentUpdater] Prediction error!")
                                 false
                             } else {
                                 prediction
                             }
 
-                            if (inconsistency) {
+                            if (hasInconsistency) {
                                 holder.registerProblem(
                                     comment, CommentUpdaterBundle.message("description.template")
                                 )
                             }
 
-                            LOG.info("[CommentUpdater] Predicted ${inconsistency}")
+                            LOG.info("[CommentUpdater] Predicted ${hasInconsistency}")
                         }
                     }
                 }

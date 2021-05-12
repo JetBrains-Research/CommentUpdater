@@ -6,17 +6,8 @@ import ai.onnxruntime.OrtSession
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 import com.beust.klaxon.KlaxonException
-import com.intellij.lang.Language
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.util.PsiUtil
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
-import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
-import com.jetbrains.rd.util.string.print
-import com.jetbrains.rd.util.string.println
 import org.jetbrains.research.commentupdater.models.jit.JITModelFeatureExtractor
 import org.jetbrains.research.commentupdater.models.ONNXTensorUtils
 import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
@@ -24,7 +15,6 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import java.io.File
 import java.lang.Integer.min
-import java.lang.Math.exp
 
 data class DataSample(
     @Json(name = "nl_ids")
@@ -109,22 +99,22 @@ class JITDetector {
             tokenCodeSequence,
             oldMethodFeatures,
             newMethodFeatures,
-            maxCommentLen = embeddingConfig.maxNlLen
+            maxCommentLen = embeddingConfig.maxCommentLen
         )
 
         val commentIds = getPaddedIds(
             commentSubTokens,
             vocab = embeddingConfig.commentVocab,
-            padToSize = embeddingConfig.maxNlLen,
-            paddingElement = getIdOrUnk(embeddingConfig.pad, embeddingConfig.commentVocab)
+            padToSize = embeddingConfig.maxCommentLen,
+            paddingElement = getIdOrUnk(embeddingConfig.paddingToken, embeddingConfig.commentVocab)
         ).map { it.toLong() }
-        val commentLength = min(commentSubTokens.size, embeddingConfig.maxNlLen)
+        val commentLength = min(commentSubTokens.size, embeddingConfig.maxCommentLen)
 
         val codeIds = getPaddedIds(
             spanCodeSequence,
             vocab = embeddingConfig.codeVocab,
             padToSize = embeddingConfig.maxCodeLen,
-            paddingElement = getIdOrUnk(embeddingConfig.pad, embeddingConfig.codeVocab)
+            paddingElement = getIdOrUnk(embeddingConfig.paddingToken, embeddingConfig.codeVocab)
         ).map { it.toLong() }
         val codeLength = min(spanCodeSequence.size, embeddingConfig.maxCodeLen)
 
@@ -162,6 +152,6 @@ class JITDetector {
     }
 
     fun getIdOrUnk(token: String, vocab: MutableMap<String, Int>): Int {
-        return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unk, 0)
+        return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unknownToken, 0)
     }
 }

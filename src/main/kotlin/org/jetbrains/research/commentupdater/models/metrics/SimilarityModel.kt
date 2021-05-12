@@ -95,6 +95,6 @@ class SimilarityModel {
     }
 
     fun getIdOrUnk(token: String, vocab: MutableMap<String, Int>): Int {
-        return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unk, 0)
+        return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unknownToken, 0)
     }
 }
