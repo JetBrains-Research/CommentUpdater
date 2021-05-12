@@ -12,6 +12,7 @@ import org.jetbrains.research.commentupdater.JITDetector
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import org.jetbrains.research.refactorinsight.CommentUpdaterBundle
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import kotlin.io.path.ExperimentalPathApi
@@ -26,10 +27,8 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
     var currentChanges: Change? = null
     var currentMethodsRefactorings = hashMapOf<String, MutableList<Refactoring>>()
 
-    val DESCRIPTION_TEMPLATE = "Inconsistent comment found"
-
     override fun inspectionStarted(session: LocalInspectionToolSession, isOnTheFly: Boolean) {
-        LOG.info("Inspection started")
+        LOG.info("[CommentUpdater] Inspection started")
 
         // Extract changes
 
@@ -43,13 +42,13 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
             currentMethodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
         }
 
-        LOG.info("File ${currentFile}, Refactorings: $currentMethodsRefactorings")
+        LOG.info("[CommentUpdater] File ${currentFile}, Refactorings: $currentMethodsRefactorings")
 
         super.inspectionStarted(session, isOnTheFly)
     }
 
     override fun inspectionFinished(session: LocalInspectionToolSession, problemsHolder: ProblemsHolder) {
-        LOG.info("Inspection finished")
+        LOG.info("[CommentUpdater] Inspection finished")
         super.inspectionFinished(session, problemsHolder)
     }
 
@@ -92,7 +91,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
                             if (inconsistency) {
                                 holder.registerProblem(
-                                    comment, DESCRIPTION_TEMPLATE
+                                    comment, CommentUpdaterBundle.message("description.template")
                                 )
                             }
 
