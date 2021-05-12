@@ -7,6 +7,7 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocComment
+import org.jetbrains.research.commentupdater.utils.qualifiedName
 
 object MethodChangesExtractor {
     private val LOG: Logger =
@@ -27,7 +28,7 @@ object MethodChangesExtractor {
                     override fun visitDocComment(comment: PsiDocComment?) {
                         if (comment != null) {
                             if (comment.owner is PsiMethod) {
-                                val name = extractFullyQualifiedName(comment.owner as PsiMethod)
+                                val name = (comment.owner as PsiMethod).qualifiedName
                                 if (name == oldName)
                                     oldMethod = comment.owner as PsiMethod
                             }
@@ -44,14 +45,10 @@ object MethodChangesExtractor {
         return null
     }
 
-    // todo: move this function to method utils
-    fun extractFullyQualifiedName(method: PsiMethod): String {
-        return (method.containingClass?.qualifiedName ?: "") + "." + method.name
-    }
 
 
     fun getOldMethod(method: PsiMethod): PsiMethod? {
-        val methodFullName = extractFullyQualifiedName(method)
+        val methodFullName = method.qualifiedName
         val psiFile = method.containingFile
         val changeListManager = ChangeListManager.getInstance(psiFile.project)
         val change: Change = changeListManager.getChange(psiFile.virtualFile) ?: return null
@@ -68,7 +65,7 @@ object MethodChangesExtractor {
                     override fun visitDocComment(comment: PsiDocComment?) {
                         if (comment != null) {
                             if (comment.owner is PsiMethod) {
-                                val name = extractFullyQualifiedName(comment.owner as PsiMethod)
+                                val name = (comment.owner as PsiMethod).qualifiedName
                                 if (name == methodFullName)
                                     oldMethod = comment.owner as PsiMethod
                             }
