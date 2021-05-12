@@ -6,17 +6,8 @@ import ai.onnxruntime.OrtSession
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 import com.beust.klaxon.KlaxonException
-import com.intellij.lang.Language
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.util.PsiUtil
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
-import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
-import com.jetbrains.rd.util.string.print
-import com.jetbrains.rd.util.string.println
 import org.jetbrains.research.commentupdater.models.jit.JITModelFeatureExtractor
 import org.jetbrains.research.commentupdater.models.ONNXTensorUtils
 import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
@@ -24,30 +15,24 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import java.io.File
 import java.lang.Integer.min
-import java.lang.Math.exp
-
 
 data class DataSample(
-    @Json(name="nl_ids")
+    @Json(name = "nl_ids")
     val commentIds: List<List<Long>>,
-    @Json(name="nl_lens")
+    @Json(name = "nl_lens")
     val commentLens: List<Long>,
-    @Json(name="nl_features")
+    @Json(name = "nl_features")
     val commentFeatures: List<List<List<Float>>>,
-    @Json(name="code_ids")
+    @Json(name = "code_ids")
     val codeIds: List<List<Long>>,
-    @Json(name="code_lens")
+    @Json(name = "code_lens")
     val codeLens: List<Long>,
-    @Json(name="code_features")
+    @Json(name = "code_features")
     val codeFeatures: List<List<List<Float>>>
 )
 
-
-
-class JITDetector() {
-
-    private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.models.jit.JitDetector")
-
+class JITDetector {
+    private val LOG: Logger = Logger.getInstance(javaClass)
 
     val TRUE_PROB = 0.5
     val env: OrtEnvironment
@@ -58,18 +43,19 @@ class JITDetector() {
         session = env.createSession(ModelFilesConfig.JIT_ONNX_FILE, OrtSession.SessionOptions())
     }
 
-
     val embeddingConfig by lazy {
-         Klaxon().parse<EmbeddingConfig>(File(ModelFilesConfig.EMBEDDING_FILE)) ?:
-            throw KlaxonException(":(")
+        Klaxon().parse<EmbeddingConfig>(File(ModelFilesConfig.EMBEDDING_FILE)) ?: throw KlaxonException(":(")
     }
-    fun getPaddedIds(tokens: List<String>, vocab: MutableMap<String, Int>,
-                     padToSize: Int?, paddingElement: Int): List<Int> {
-        val paddedTokens =  if (padToSize != null) tokens.take(padToSize) else tokens
+
+    fun getPaddedIds(
+        tokens: List<String>, vocab: MutableMap<String, Int>,
+        padToSize: Int?, paddingElement: Int
+    ): List<Int> {
+        val paddedTokens = if (padToSize != null) tokens.take(padToSize) else tokens
         val ids = paddedTokens.map {
             getIdOrUnk(it, vocab)
         }
-        return if(padToSize != null && ids.size != padToSize) {
+        return if (padToSize != null && ids.size != padToSize) {
             ids.plus(
                 List(padToSize - ids.size) { paddingElement }
             )
@@ -77,7 +63,6 @@ class JITDetector() {
             ids
         }
     }
-
 
     fun predict(oldMethod: PsiMethod, newMethod: PsiMethod): Boolean? {
         val oldMethodFeatures = JITModelFeatureExtractor.extractMethodFeatures(oldMethod, subTokenize = true)
@@ -114,36 +99,39 @@ class JITDetector() {
             tokenCodeSequence,
             oldMethodFeatures,
             newMethodFeatures,
-            maxCommentLen = embeddingConfig.maxNlLen
+            maxCommentLen = embeddingConfig.maxCommentLen
         )
 
         val commentIds = getPaddedIds(
             commentSubTokens,
             vocab = embeddingConfig.commentVocab,
-            padToSize = embeddingConfig.maxNlLen,
-            paddingElement = getIdOrUnk(embeddingConfig.pad, embeddingConfig.commentVocab)
+            padToSize = embeddingConfig.maxCommentLen,
+            paddingElement = getIdOrUnk(embeddingConfig.paddingToken, embeddingConfig.commentVocab)
         ).map { it.toLong() }
-        val commentLength = min(commentSubTokens.size, embeddingConfig.maxNlLen)
+        val commentLength = min(commentSubTokens.size, embeddingConfig.maxCommentLen)
 
         val codeIds = getPaddedIds(
             spanCodeSequence,
             vocab = embeddingConfig.codeVocab,
             padToSize = embeddingConfig.maxCodeLen,
-            paddingElement = getIdOrUnk(embeddingConfig.pad, embeddingConfig.codeVocab)
+            paddingElement = getIdOrUnk(embeddingConfig.paddingToken, embeddingConfig.codeVocab)
         ).map { it.toLong() }
         val codeLength = min(spanCodeSequence.size, embeddingConfig.maxCodeLen)
 
         val commentIdsTensor = ONNXTensorUtils.twoDListToTensor(listOf(commentIds), env) ?: return null
         val commentLensTensor = ONNXTensorUtils.oneDListToTensor(listOf(commentLength.toLong()), env) ?: return null
         val commentFeaturesTensor = ONNXTensorUtils.threeDListToTensor(
-            listOf(commentFeatures.map{it.toList().map{v -> v.toFloat()}}.toList())
-            , env) ?: return null
+            listOf(commentFeatures.map { it.toList().map { v -> v.toFloat() } }.toList()), env
+        ) ?: return null
+
         val codeIdsTensor = ONNXTensorUtils.twoDListToTensor(listOf(codeIds), env) ?: return null
         val codeLensTensor = ONNXTensorUtils.oneDListToTensor(listOf(codeLength.toLong()), env) ?: return null
         val codeFeaturesTensor = ONNXTensorUtils.threeDListToTensor(
-            listOf(codeFeatures.map{it.toList().map { v -> v.toFloat() }}.toList()),
-            env) ?: return null
-        val inputs =  mapOf(
+            listOf(codeFeatures.map { it.toList().map { v -> v.toFloat() } }.toList()),
+            env
+        ) ?: return null
+
+        val inputs = mapOf(
             "nl_ids" to commentIdsTensor,
             "nl_lens" to commentLensTensor,
             "nl_features" to commentFeaturesTensor,
@@ -157,14 +145,13 @@ class JITDetector() {
         val zeroSoftmax = kotlin.math.exp(modelOut.floatBuffer[0])
         val oneSoftmax = kotlin.math.exp(modelOut.floatBuffer[1])
         val probability = oneSoftmax / (zeroSoftmax + oneSoftmax)
-        
-        
-        LOG.info("Method: ${newMethod.name}, probability: ${probability}")
+
+
+        LOG.info("[CommentUpdater] JIT model result: method ${newMethod.name}, probability: ${probability}")
         return probability >= TRUE_PROB
     }
 
     fun getIdOrUnk(token: String, vocab: MutableMap<String, Int>): Int {
-        return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unk, 0)
+        return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unknownToken, 0)
     }
-
 }

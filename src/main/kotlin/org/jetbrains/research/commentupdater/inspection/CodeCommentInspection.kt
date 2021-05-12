@@ -2,36 +2,29 @@ package org.jetbrains.research.commentupdater.inspection
 
 import com.intellij.codeInspection.*
 import com.intellij.openapi.vcs.changes.Change
-
-import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vcs.changes.ChangeListManager
-
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocComment
 import gr.uom.java.xmi.diff.*
-import org.jetbrains.research.commentupdater.CodeCommentDiffs
 import org.jetbrains.research.commentupdater.JITDetector
-import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import org.jetbrains.research.refactorinsight.CommentUpdaterBundle
 import org.refactoringminer.api.Refactoring
-import org.refactoringminer.api.RefactoringType
-import kotlin.io.path.ExperimentalPathApi
-
 
 class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
-    private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.inspection.CodeCommentInspection")
+    private val LOG: Logger =
+        Logger.getInstance(javaClass)
     val detector = JITDetector()
 
     var currentFile = ""
     var currentChanges: Change? = null
     var currentMethodsRefactorings = hashMapOf<String, MutableList<Refactoring>>()
 
-    val DESCRIPTION_TEMPLATE = "Inconsistent comment found"
-
     override fun inspectionStarted(session: LocalInspectionToolSession, isOnTheFly: Boolean) {
-        LOG.info("Inspection started")
+        LOG.info("[CommentUpdater] Inspection started")
 
         // Extract changes
 
@@ -45,13 +38,13 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
             currentMethodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
         }
 
-        LOG.info("File ${currentFile}, Refactorings: $currentMethodsRefactorings")
+        LOG.info("[CommentUpdater] File ${currentFile}, Refactorings: $currentMethodsRefactorings")
 
         super.inspectionStarted(session, isOnTheFly)
     }
 
     override fun inspectionFinished(session: LocalInspectionToolSession, problemsHolder: ProblemsHolder) {
-        LOG.info("Inspection finished")
+        LOG.info("[CommentUpdater] Inspection finished")
         super.inspectionFinished(session, problemsHolder)
     }
 
@@ -60,28 +53,23 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
         return object : JavaElementVisitor() {
 
             override fun visitDocComment(comment: PsiDocComment?) {
-                LOG.info("I am visiting DocComment inside $currentFile")
                 if (comment != null) {
-
-                    LOG.info("Found comment" + comment.text)
                     if (comment.owner is PsiMethod) {
-
-                        LOG.info("Method for that comment:" + (comment.owner as PsiMethod).name)
 
                         val newMethod = (comment.owner as PsiMethod)
                         val newName = MethodChangesExtractor.extractFullyQualifiedName(newMethod)
+
+                        LOG.info("[CommentUpdater] Processing comment in method $newName in file $currentFile.")
+
                         val oldName = currentMethodsRefactorings.getOrElse(
                             newName
-                        ) { null } ?.
-                        filterIsInstance<RenameOperationRefactoring>() ?.getOrNull(0) ?.let {
+                        ) { null }?.filterIsInstance<RenameOperationRefactoring>()?.getOrNull(0)?.let {
                             it.originalOperation.className + "." + it.originalOperation.name
                         }
-                        val oldMethod = (oldName ?: newName).let {
-                            name ->
-                            currentChanges?.let {
-                                change ->
+                        val oldMethod = (oldName ?: newName).let { name ->
+                            currentChanges?.let { change ->
                                 val oldMethod = MethodChangesExtractor.getOldMethod(newMethod, change, name)
-                                LOG.info("NewMethod: $newName oldMethod: $name")
+                                LOG.info("[CommentUpdater] Found old method with name: $name")
                                 oldMethod
                             }
                         }
@@ -90,21 +78,20 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                             // todo: compare whether oldMethod != newMethod
                             val prediction = detector.predict(oldMethod, newMethod)
 
-                            val inconsistency =  if(prediction == null) {
-                                    LOG.info("Prediction error!")
-                                    false
-                                } else {
-                                    prediction
-                                }
+                            val hasInconsistency = if (prediction == null) {
+                                LOG.info("[CommentUpdater] Prediction error!")
+                                false
+                            } else {
+                                prediction
+                            }
 
-                            if(inconsistency) {
+                            if (hasInconsistency) {
                                 holder.registerProblem(
-                                    comment, DESCRIPTION_TEMPLATE
+                                    comment, CommentUpdaterBundle.message("description.template")
                                 )
                             }
 
-
-                            LOG.info("Predicted ${inconsistency}")
+                            LOG.info("[CommentUpdater] Predicted ${hasInconsistency}")
                         }
                     }
                 }
@@ -112,5 +99,4 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
             }
         }
     }
-
 }

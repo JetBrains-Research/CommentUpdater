@@ -20,20 +20,17 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-
     implementation "io.github.java-diff-utils:java-diff-utils:4.9"
     implementation "io.kinference:inference:0.1.2"
     implementation "com.microsoft.onnxruntime:onnxruntime:1.7.0"
     implementation 'com.beust:klaxon:5.5'
     implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
-
     implementation 'org.jetbrains.bio:viktor:1.1.0'
-
-
     testImplementation 'com.jetbrains.intellij.platform:vcs-test-framework:201.7846.76'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
     testImplementation "junit:junit:4.11"
     testCompile("org.assertj:assertj-core:3.11.1")
+
 }
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
@@ -51,10 +48,8 @@ compileTestKotlin {
 
 
 tasks.runIde {
-//        val dataset: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\src\\test\\resources\\mock_data"
-//        val output: String =  "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\output"
-//        val config: String = "C:\\Users\\pavlo\\IdeaProjects\\psiminer\\config.json"
-        runIde.args "CommentUpdater"
-        runIde.jvmArgs "-Djava.awt.headless=true"
-        maxHeapSize = "20g"
+    runIde.args "CommentUpdater"
+    runIde.jvmArgs "-Djava.awt.headless=true"
+    maxHeapSize = "20g"
 }
+

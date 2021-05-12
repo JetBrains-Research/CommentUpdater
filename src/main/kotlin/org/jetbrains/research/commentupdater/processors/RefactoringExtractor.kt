@@ -1,25 +1,14 @@
 package org.jetbrains.research.commentupdater.processors
 
-import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
-import com.intellij.openapi.vcs.changes.ChangeListManager
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiFileFactory
-import com.intellij.psi.PsiMethod
-import com.intellij.refactoring.RenameRefactoring
 import gr.uom.java.xmi.UMLModelASTReader
 import gr.uom.java.xmi.diff.*
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import java.nio.file.Files.createFile
 import java.nio.file.Files.createTempDirectory
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.createTempFile
-import kotlin.io.path.deleteIfExists
-import kotlin.io.path.createTempDirectory as createTempDirectory1
-
 
 object RefactoringExtractor {
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.RefactoringExtractor")
@@ -35,8 +24,8 @@ object RefactoringExtractor {
 
     fun methodsToRefactoringTypes(refactorings: List<Refactoring>): HashMap<String, MutableList<Refactoring>> {
         val methodToRefactorings = hashMapOf<String, MutableList<Refactoring>>()
-        for(r in refactorings) {
-            val methodName = when(r.refactoringType) {
+        for (r in refactorings) {
+            val methodName = when (r.refactoringType) {
                 RefactoringType.RENAME_METHOD -> {
                     (r as RenameOperationRefactoring).renamedOperation.className + "." +
                             r.renamedOperation.name
@@ -65,7 +54,7 @@ object RefactoringExtractor {
                     ""
                 }
             }
-            if(methodToRefactorings.containsKey(methodName)) {
+            if (methodToRefactorings.containsKey(methodName)) {
                 methodToRefactorings[methodName]?.add(r)
             } else {
                 methodToRefactorings[methodName] = mutableListOf(r)
@@ -95,7 +84,7 @@ object RefactoringExtractor {
             }
 
         } catch (e: VcsException) {
-            LOG.error("[ACP] Failed to get a file's content from the last revision.", e.message)
+            LOG.error("[CommentUpdater] Failed to get a file's content from the last revision.", e.message)
         }
         return listOf()
     }

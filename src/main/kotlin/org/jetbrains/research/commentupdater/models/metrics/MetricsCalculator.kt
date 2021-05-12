@@ -10,7 +10,6 @@ import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import kotlin.math.absoluteValue
 
-
 data class MethodMetric(
     val isRenamed: Boolean,
     val isParamAdded: Boolean,

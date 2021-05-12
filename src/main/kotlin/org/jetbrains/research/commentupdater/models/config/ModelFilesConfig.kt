@@ -1,7 +1,6 @@
 package org.jetbrains.research.commentupdater.models.config
 
 object ModelFilesConfig {
-
     val DATA_DIR = "C:\\Users\\pavlo\\IdeaProjects\\CommentUpdater"
 
     val CODE_EMBEDDING_ONNX_FILE = "$DATA_DIR\\code_embeddings.onnx"
