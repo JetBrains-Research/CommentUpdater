@@ -29,34 +29,28 @@ class SimilarityModel {
         commentEmbeddingSession = env.createSession(ModelFilesConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
     }
 
-    fun compute(tokens1: List<String>, tokens2: List<String>, isCode1: Boolean, isCode2: Boolean): Double {
-        val (vocab1, embeddings1) = if(isCode1) {
-            embeddingConfig.codeVocab to codeEmbeddingsSession
-        } else {
-            embeddingConfig.commentVocab to commentEmbeddingSession
-        }
-        val (vocab2, embeddings2) = if(isCode2) {
+    fun compute(tokens1: List<String>, tokens2: List<String>, useCodeVocab: Boolean): Double {
+        val (vocab, embeddings) = if(useCodeVocab) {
             embeddingConfig.codeVocab to codeEmbeddingsSession
         } else {
             embeddingConfig.commentVocab to commentEmbeddingSession
         }
 
-        // todo: Add cosine similarity calculation
         // Victor library by JBR: https://blog.jetbrains.com/kotlin/2021/03/viktor-efficient-vectorized-computations-in-kotlin/
         val array1 = F64Array(tokens1.size, EMBEDDING_SIZE)
         for(i in 0 until tokens1.size) {
-            val id = getIdOrUnk(tokens1[i], vocab1)
+            val id = getIdOrUnk(tokens1[i], vocab)
             val inputs = mapOf("id" to ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env))
-            val embedding = embeddings1.run(inputs)[0] as OnnxTensor
+            val embedding = embeddings.run(inputs)[0] as OnnxTensor
             for(j in 0 until EMBEDDING_SIZE) {
                 array1[i, j] = embedding.floatBuffer[j].toDouble()
             }
         }
         val array2 = F64Array(tokens2.size, EMBEDDING_SIZE)
         for (i in 0 until tokens2.size) {
-            val id = getIdOrUnk(tokens2[i], vocab2)
+            val id = getIdOrUnk(tokens2[i], vocab)
             val inputs = mapOf("id" to ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env))
-            val embedding = embeddings2.run(inputs)[0] as OnnxTensor
+            val embedding = embeddings.run(inputs)[0] as OnnxTensor
             for(j in 0 until EMBEDDING_SIZE) {
                 array2[i, j] = embedding.floatBuffer[j].toDouble()
             }
