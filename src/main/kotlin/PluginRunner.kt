@@ -23,24 +23,41 @@ import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
+import javassist.CtNewMethod
+import org.jetbrains.research.commentupdater.models.MethodMetric
+import org.jetbrains.research.commentupdater.models.MetricsCalculator
+import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import org.jetbrains.research.commentupdater.utils.qualifiedName
+import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import kotlin.system.exitProcess
 
+data class DatasetExample(
+    val oldCode: String,
+    val newCode: String,
+    val oldComment: String,
+    val newComment: String,
+    val commitId: String,
+    val fileName: String,
+    val metric: MethodMetric
+)
 
-
-class PluginRunner: ApplicationStarter {
+class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
+    val datasetExamples = mutableListOf<DatasetExample>()
+    val metricsModel = MetricsCalculator()
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.PluginRunner")
 
     override fun main(args: Array<out String>) {
-        println("How to run IntellijIDEA in headless mode?")
-        println("I have no IDEA")
+        LOG.info("[HeadlessCommentUpdater] Starting application")
 
-        val projectPath = "C:\\Users\\pavlo\\IdeaProjects\\exampleproject"
+        val projectPath = "C:\\Users\\pavlo\\IdeaProjects\\sample"
 
         inspectProject(projectPath)
+
     }
 
     fun inspectProject(projectPath: String) {
@@ -73,43 +90,96 @@ class PluginRunner: ApplicationStarter {
         vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
             val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
             for (root in gitRoots) {
-                val repo = gitRepoManager.getRepositoryForRoot(root)
-                if (repo != null) {
-                    repo // todo: debug purpose (suitable breakpoint line), remove in future
-                    walkRepo(repo).forEach {
-                        commit ->
-                        getChanges(commit, ".java").forEach {
-                                change ->
+                val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
+                repo // todo: debug purpose (suitable breakpoint line), remove in future
+                walkRepo(repo).forEach { commit ->
+                    getChanges(commit, ".java").forEach { change ->
 
-                            println("Commit: ${commit.id} Filechanged: ${change.afterRevision?.file?.name ?: ""}")
+                        val fileName = change.afterRevision?.file?.name ?: ""
+                        LOG.info("[HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
 
+                        val refactorings = RefactoringExtractor.extract(change)
+                        val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
 
-                            try {
-                                val changedMethods = extractChangedMethods(project, change)
-                                println(
-                                    "Commit: ${commit.id} changes: ${
-                                        changedMethods.map {
-                                            it.first.name to it.second.name
-                                        }
-                                    }"
+                        val changedMethods = try {
+                            extractChangedMethods(project, change, refactorings)
+                        } catch (e: VcsException) {
+                            //todo: figure out what causes an exception on RefactorInsight repo
+                            LOG.warn("[HeadlessCommentUpdater] Unexpected VCS exception: ${e.stackTrace}")
+                            null
+                        }
+
+                        LOG.info(
+                            "[HeadlessCommentUpdater] method changes: ${
+                                (changedMethods ?: mutableListOf()).map {
+                                    it.first.name to it.second.name
+                                }
+                            }"
+                        )
+
+                        changedMethods?.let {
+                            for ((oldMethod, newMethod) in it) {
+                                lateinit var methodName: String
+                                lateinit var oldCode: String
+                                lateinit var newCode: String
+                                lateinit var oldComment: String
+                                lateinit var newComment: String
+
+                                ApplicationManager.getApplication().runReadAction {
+                                    methodName = newMethod.qualifiedName
+                                    oldCode = oldMethod.textWithoutDoc
+                                    newCode = newMethod.textWithoutDoc
+                                    oldComment = oldMethod.docComment?.text ?: ""
+                                    newComment = newMethod.docComment?.text ?: ""
+                                }
+
+                                if (oldCode.trim() == newCode.trim()) {
+                                    continue
+                                }
+
+                                val methodRefactorings = methodsRefactorings.getOrDefault(
+                                    methodName,
+                                    mutableListOf()
                                 )
-                            } catch (e: VcsException) {
-                                //todo: figure out what causes an exception on RefactorInsight repo
-                                LOG.warn("Unexpected VCS exception: ${e.stackTrace}")
+
+                                val metric =
+                                    metricsModel.calculateMetrics(oldCode, newCode, newComment, methodRefactorings)
+                                        ?: continue
+
+                                saveMetric(commit.id.toShortString(), fileName, oldCode, newCode, oldComment, newComment, metric)
+
                             }
                         }
                     }
-
-                } else {
-                    LOG.warn("repo is null for root")
                 }
+
             }
+            println(datasetExamples)
             exitProcess(0)
         }
     }
 
-    fun extractNameChanges(change: Change): HashMap<String, String> {
-        return hashMapOf(*RefactoringExtractor.extract(change).filter {
+    fun saveMetric(commitId: String, fileName: String, oldCode: String, newCode: String, oldComment: String, newComment: String,
+                   metric: MethodMetric) {
+        datasetExamples.add(
+            DatasetExample(
+                oldCode,
+                newCode,
+                oldComment,
+                newComment,
+                commitId,
+                fileName,
+                metric
+            )
+        )
+
+    }
+
+    /**
+     * @return: Map from old method name to new method name
+     */
+    fun extractNameChanges(refactorings: List<Refactoring>): HashMap<String, String> {
+        return hashMapOf(*refactorings.filter {
             it.refactoringType == RefactoringType.RENAME_METHOD
         }.map {
             val renameRefactoring = (it as RenameOperationRefactoring)
@@ -119,11 +189,18 @@ class PluginRunner: ApplicationStarter {
         }.toTypedArray())
     }
 
-    fun extractChangedMethods(project: Project, change: Change): MutableList<Pair<PsiMethod, PsiMethod>> {
+    /**
+     * @return: List of pairs oldMethod to newMethod
+     */
+    fun extractChangedMethods(
+        project: Project,
+        change: Change,
+        refactorings: List<Refactoring>
+    ): MutableList<Pair<PsiMethod, PsiMethod>> {
         val before = change.beforeRevision?.content ?: return mutableListOf()
         val after = change.afterRevision?.content ?: return mutableListOf()
 
-        val renameMapping = extractNameChanges(change)
+        val renameMapping = extractNameChanges(refactorings)
 
         val changedMethodPairs = mutableListOf<Pair<PsiMethod, PsiMethod>>()
 
@@ -131,17 +208,17 @@ class PluginRunner: ApplicationStarter {
 
         val newMethods = extractMethodsWithNames(project, after)
 
-        newMethods.forEach {
-            (afterName, it) ->
-            val beforeName = if(renameMapping.containsKey(afterName)) {
+        newMethods.forEach { (afterName, newMethod) ->
+            val beforeName = if (renameMapping.containsKey(afterName)) {
                 renameMapping[afterName]
             } else {
                 afterName
             }
-            oldNamesToMethods.get(beforeName)?.let {
-                oldMethod ->
-                changedMethodPairs.add(oldMethod to it)
+            oldNamesToMethods.get(beforeName)?.let { oldMethod ->
+                changedMethodPairs.add(oldMethod to newMethod)
             }
+
+
         }
         return changedMethodPairs
     }
@@ -194,15 +271,15 @@ class PluginRunner: ApplicationStarter {
 
     fun getChanges(commit: GitCommit, fileSuffix: String): List<Change> {
         return commit.changes
-        .filter {
-            it.afterRevision != null
-                    &&
-            it.beforeRevision != null
-        }
-        .filter {
-            // not null and true
-            it.virtualFile?.name?.endsWith(fileSuffix) == true
-        }
+            .filter {
+                it.afterRevision != null
+                        &&
+                        it.beforeRevision != null
+            }
+            .filter {
+                // not null and true
+                it.virtualFile?.name?.endsWith(fileSuffix) == true
+            }
     }
 
     fun walkRepo(repo: GitRepository): List<GitCommit> {
