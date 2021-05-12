@@ -6,6 +6,8 @@ import org.jetbrains.research.commentupdater.CodeCommentDiffs
 import org.jetbrains.research.commentupdater.models.metrics.SimilarityModel
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
+import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import kotlin.math.absoluteValue
@@ -36,10 +38,9 @@ class MetricsCalculator {
 
     val simModel: SimilarityModel = SimilarityModel()
 
-    fun calculateMetrics(oldMethod: PsiMethod, newMethod: PsiMethod, comment: PsiDocComment,
-    methodRefactorings: HashMap<String, MutableList<Refactoring>>): MethodMetric {
-        val methodName = MethodChangesExtractor.extractFullyQualifiedName(newMethod)
-        val methodRefactorings = methodRefactorings.getOrDefault(methodName, mutableListOf())
+    fun calculateMetrics(oldCode: String, newCode: String, comment: String,
+    methodRefactorings: MutableList<Refactoring> = mutableListOf()): MethodMetric? {
+
         var isRenamed = false
         var isParamAdded = false
         var isParamRemoved = false
@@ -71,18 +72,17 @@ class MetricsCalculator {
             }
         }
 
+        val filterSubTokens = {s: String -> s.any { c -> c.isLetter() }}
         // todo: filter code subtokens from braces, numbers and so on
 
-        val oldCode = CodeCommentTokenizer.extractMethodCode(oldMethod)
-        val newCode = CodeCommentTokenizer.extractMethodCode(newMethod)
-        val oldSubTokens = CodeCommentTokenizer.subTokenizeCode(oldCode)
-        val newSubTokens = CodeCommentTokenizer.subTokenizeCode(newCode)
+        val oldSubTokens = CodeCommentTokenizer.subTokenizeCode(oldCode).filter(filterSubTokens)
+        val newSubTokens = CodeCommentTokenizer.subTokenizeCode(newCode).filter(filterSubTokens)
 
         val oldCodeLen = oldSubTokens.size
         val newCodeLen = newSubTokens.size
 
         // todo: should subtokenizer remove *, !, ... ? (now it doesn't)
-        val commentSubTokens = CodeCommentTokenizer.subTokenizeComment(comment.text)
+        val commentSubTokens = CodeCommentTokenizer.subTokenizeComment(comment).filter(filterSubTokens)
 
         val commentLen = commentSubTokens.size
 
@@ -90,6 +90,11 @@ class MetricsCalculator {
 
         val changedCodeLen = diffCommands.count {
             it != CodeCommentDiffs.KEEP
+        }
+
+        // methods with equal bodies aren't interesting
+        if (changedCodeLen == 0) {
+            return null
         }
 
         val percentageCodeChanged: Double = changedCodeLen / oldCodeLen.toDouble()
@@ -109,18 +114,20 @@ class MetricsCalculator {
 
         val percentageCommentIntersectionDelete: Double = deleteCommentIntersectionLen / commentLen.toDouble()
 
+        if (oldSubTokens.isEmpty() || newSubTokens.isEmpty() || commentSubTokens.isEmpty()) {
+            return null
+        }
+
         val oldCodeCommentSim = simModel.compute(
             oldSubTokens,
             commentSubTokens,
-            true,
-            false
+            true
         )
 
         val newCodeCommentSim = simModel.compute(
             newSubTokens,
             commentSubTokens,
-            true,
-            false
+            true
         )
 
         val newOldCodeCommentSimDistance = (oldCodeCommentSim - newCodeCommentSim).absoluteValue
@@ -133,19 +140,26 @@ class MetricsCalculator {
             it.first in listOf(CodeCommentDiffs.REPLACE_NEW, CodeCommentDiffs.INSERT)
         }.map { it.second }
 
-        val oldChangedCommentSim = simModel.compute(
-            removedStatements,
-            commentSubTokens,
-            true,
-            false
-        )
+        // todo: add removedStatements.size as a feature
+        val oldChangedCommentSim = if (removedStatements.isNotEmpty()) {
+            simModel.compute(
+                removedStatements,
+                commentSubTokens,
+                true
+            )
+        } else {
+            0.0
+        }
 
-        val newChangedCommentSim = simModel.compute(
-            addedStatements,
-            commentSubTokens,
-            true,
-            false
-        )
+        val newChangedCommentSim = if (addedStatements.isNotEmpty()) {
+            simModel.compute(
+                addedStatements,
+                commentSubTokens,
+                true
+            )
+        } else {
+            0.0
+        }
 
         val oldNewChangedSimDist = (newChangedCommentSim - oldChangedCommentSim).absoluteValue
 
