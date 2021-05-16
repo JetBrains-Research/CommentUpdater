@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.jetbrains.intellij' version '0.6.5'
+    id 'org.jetbrains.intellij' version '0.7.2'
     id "org.jetbrains.kotlin.jvm" version "1.4.30"
 }
 
@@ -9,11 +9,23 @@ version = "1.0"
 
 repositories {
     mavenCentral()
+    jcenter()
+}
+
+dependencies {
+    implementation "io.github.java-diff-utils:java-diff-utils:4.9"
+    implementation "io.kinference:inference:0.1.2"
+    implementation "com.microsoft.onnxruntime:onnxruntime:1.7.0"
+    implementation 'com.beust:klaxon:5.5'
+    implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
+    implementation 'org.jetbrains.bio:viktor:1.1.0'
+    testImplementation "org.jetbrains.kotlin:kotlin-test"
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
 }
 
 intellij {
-    version = '2020.3'
-    plugins = ['com.intellij.java']
+    version = '2021.1'
+    plugins 'java', 'git4idea'
 }
 
 buildSearchableOptions {
