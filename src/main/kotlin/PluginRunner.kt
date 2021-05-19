@@ -1,3 +1,6 @@
+import com.beust.klaxon.Klaxon
+import com.beust.klaxon.json
+import com.google.gson.Gson
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
@@ -32,6 +35,7 @@ import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
+import java.io.File
 import kotlin.system.exitProcess
 
 data class DatasetExample(
@@ -47,14 +51,18 @@ data class DatasetExample(
 class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
+    val OUTPUT_PATH = "C:\\Users\\pavlo\\IdeaProjects\\CommentUpdater\\dataset.json"
     val datasetExamples = mutableListOf<DatasetExample>()
     val metricsModel = MetricsCalculator()
+    var processedCommits = 0
+    var processedMethods = 0
+    var processedFileChanges = 0
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.PluginRunner")
 
     override fun main(args: Array<out String>) {
         LOG.info("[HeadlessCommentUpdater] Starting application")
 
-        val projectPath = "C:\\Users\\pavlo\\IdeaProjects\\sample"
+        val projectPath = "C:\\Users\\pavlo\\IdeaProjects\\RefactorInsight"
 
         inspectProject(projectPath)
 
@@ -93,8 +101,9 @@ class PluginRunner : ApplicationStarter {
                 val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
                 repo // todo: debug purpose (suitable breakpoint line), remove in future
                 walkRepo(repo).forEach { commit ->
+                    processedCommits += 1
                     getChanges(commit, ".java").forEach { change ->
-
+                        processedFileChanges += 1
                         val fileName = change.afterRevision?.file?.name ?: ""
                         LOG.info("[HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
 
@@ -119,6 +128,7 @@ class PluginRunner : ApplicationStarter {
 
                         changedMethods?.let {
                             for ((oldMethod, newMethod) in it) {
+                                processedMethods += 1
                                 lateinit var methodName: String
                                 lateinit var oldCode: String
                                 lateinit var newCode: String
@@ -146,7 +156,15 @@ class PluginRunner : ApplicationStarter {
                                     metricsModel.calculateMetrics(oldCode, newCode, newComment, methodRefactorings)
                                         ?: continue
 
-                                saveMetric(commit.id.toShortString(), fileName, oldCode, newCode, oldComment, newComment, metric)
+                                saveMetric(
+                                    commit.id.toShortString(),
+                                    fileName,
+                                    oldCode,
+                                    newCode,
+                                    oldComment,
+                                    newComment,
+                                    metric
+                                )
 
                             }
                         }
@@ -154,13 +172,25 @@ class PluginRunner : ApplicationStarter {
                 }
 
             }
-            println(datasetExamples)
-            exitProcess(0)
+            onFinish()
         }
     }
 
-    fun saveMetric(commitId: String, fileName: String, oldCode: String, newCode: String, oldComment: String, newComment: String,
-                   metric: MethodMetric) {
+    fun onFinish() {
+        LOG.info(
+            "[HeadlessCommentUpdater] Found ${datasetExamples.size} examples," +
+            " processed: commits $processedCommits methods $processedMethods" +
+            " file changes $processedFileChanges"
+        )
+        val jsonString = Gson().toJson(datasetExamples)
+        File(OUTPUT_PATH).writeText(jsonString)
+        exitProcess(0)
+    }
+
+    fun saveMetric(
+        commitId: String, fileName: String, oldCode: String, newCode: String, oldComment: String, newComment: String,
+        metric: MethodMetric
+    ) {
         datasetExamples.add(
             DatasetExample(
                 oldCode,

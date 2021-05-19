@@ -84,7 +84,7 @@ object RefactoringExtractor {
             }
 
         } catch (e: VcsException) {
-            LOG.error("[CommentUpdater] Failed to get a file's content from the last revision.", e.message)
+            LOG.warn("[CommentUpdater] Failed to get a file's content from the last revision.")
         }
         return listOf()
     }
