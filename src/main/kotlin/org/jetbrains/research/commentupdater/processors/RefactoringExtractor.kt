@@ -79,6 +79,11 @@ object RefactoringExtractor {
             val model2 = UMLModelASTReader(dir2.toFile()).umlModel
             val modelDiff = model1.diff(model2)
 
+            file1.toFile().delete()
+            file2.toFile().delete()
+            dir1.toFile().delete()
+            dir2.toFile().delete()
+
             return modelDiff.refactorings.filter {
                 it.refactoringType in REFACTORINGS
             }
