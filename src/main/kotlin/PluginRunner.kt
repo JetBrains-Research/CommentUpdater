@@ -20,6 +20,7 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
+import com.jetbrains.rd.util.string.printToString
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.history.GitHistoryUtils
@@ -27,6 +28,11 @@ import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
 import javassist.CtNewMethod
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.annotations.Nullable
 import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
@@ -36,6 +42,8 @@ import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import java.io.File
+import java.io.FileWriter
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
 data class DatasetExample(
@@ -51,21 +59,34 @@ data class DatasetExample(
 class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
+
     val OUTPUT_PATH = "C:\\Users\\pavlo\\IdeaProjects\\CommentUpdater\\dataset.json"
-    val datasetExamples = mutableListOf<DatasetExample>()
+    val gson = Gson()
+
     val metricsModel = MetricsCalculator()
-    var processedCommits = 0
-    var processedMethods = 0
-    var processedFileChanges = 0
+    var foundSamples = AtomicInteger(0)
+    var processedCommits = AtomicInteger(0)
+    var processedMethods = AtomicInteger(0)
+    var processedFileChanges = AtomicInteger(0)
+    val outputFile = File(OUTPUT_PATH)
+    val outputWriter = FileWriter(outputFile, true)
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.PluginRunner")
 
     override fun main(args: Array<out String>) {
-        LOG.info("[HeadlessCommentUpdater] Starting application")
 
-        val projectPath = "C:\\Users\\pavlo\\IdeaProjects\\RefactorInsight"
+        LOG.info(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Starting application")
 
+
+        // path to cloned project: https://github.com/google/guava.git
+        val projectPath = "C:\\Users\\pavlo\\IdeaProjects\\guava"
+
+        onStart()
         inspectProject(projectPath)
+    }
 
+    private fun onStart() {
+        //start json list
+        outputFile.writeText("[")
     }
 
     fun inspectProject(projectPath: String) {
@@ -95,95 +116,119 @@ class PluginRunner : ApplicationStarter {
 
         // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
         // To understand why we should call addInitializationRequest
+
         vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
-            val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
-            for (root in gitRoots) {
-                val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
-                repo // todo: debug purpose (suitable breakpoint line), remove in future
-                walkRepo(repo).forEach { commit ->
-                    processedCommits += 1
-                    getChanges(commit, ".java").forEach { change ->
-                        processedFileChanges += 1
-                        val fileName = change.afterRevision?.file?.name ?: ""
-                        LOG.info("[HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
-
-                        val refactorings = RefactoringExtractor.extract(change)
-                        val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
-
-                        val changedMethods = try {
-                            extractChangedMethods(project, change, refactorings)
-                        } catch (e: VcsException) {
-                            //todo: figure out what causes an exception on RefactorInsight repo
-                            LOG.warn("[HeadlessCommentUpdater] Unexpected VCS exception: ${e.stackTrace}")
-                            null
-                        }
-
-                        LOG.info(
-                            "[HeadlessCommentUpdater] method changes: ${
-                                (changedMethods ?: mutableListOf()).map {
-                                    it.first.name to it.second.name
+            try {
+                val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
+                for (root in gitRoots) {
+                    val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
+                    runBlocking {
+                        walkRepo(repo).forEach { commit ->
+                            processedCommits.incrementAndGet()
+                            getChanges(commit, ".java").map { change ->
+                                // Concurrency can be commented to check memory leaks
+                                  async(Dispatchers.Default) {
+                                    try {
+                                        processChange(change, commit, project)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
+                                    }
                                 }
-                            }"
-                        )
-
-                        changedMethods?.let {
-                            for ((oldMethod, newMethod) in it) {
-                                processedMethods += 1
-                                lateinit var methodName: String
-                                lateinit var oldCode: String
-                                lateinit var newCode: String
-                                lateinit var oldComment: String
-                                lateinit var newComment: String
-
-                                ApplicationManager.getApplication().runReadAction {
-                                    methodName = newMethod.qualifiedName
-                                    oldCode = oldMethod.textWithoutDoc
-                                    newCode = newMethod.textWithoutDoc
-                                    oldComment = oldMethod.docComment?.text ?: ""
-                                    newComment = newMethod.docComment?.text ?: ""
-                                }
-
-                                if (oldCode.trim() == newCode.trim()) {
-                                    continue
-                                }
-
-                                val methodRefactorings = methodsRefactorings.getOrDefault(
-                                    methodName,
-                                    mutableListOf()
-                                )
-
-                                val metric =
-                                    metricsModel.calculateMetrics(oldCode, newCode, newComment, methodRefactorings)
-                                        ?: continue
-
-                                saveMetric(
-                                    commit.id.toShortString(),
-                                    fileName,
-                                    oldCode,
-                                    newCode,
-                                    oldComment,
-                                    newComment,
-                                    metric
-                                )
-
-                            }
+                            }.awaitAll()
                         }
                     }
+
+                }
+            } catch (e: Exception) {
+                println("Failed with an exception: ${e.toString()}")
+                e.printStackTrace()
+            }
+            finally {
+                onFinish()
+            }
+        }
+    }
+
+    fun processChange(
+        change: Change,
+        commit: GitCommit,
+        project: @Nullable Project
+    ) {
+        processedFileChanges.incrementAndGet()
+        val fileName = change.afterRevision?.file?.name ?: ""
+        LOG.info(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
+
+        val refactorings = RefactoringExtractor.extract(change)
+        val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
+
+        val changedMethods = try {
+            extractChangedMethods(project, change, refactorings)
+        } catch (e: VcsException) {
+            LOG.warn(" ${Thread.currentThread().name} HeadlessCommentUpdater] Unexpected VCS exception: ${e.stackTrace}")
+            null
+        }
+
+        LOG.info(
+            " ${Thread.currentThread().name} [HeadlessCommentUpdater] method changes: ${
+                (changedMethods ?: mutableListOf()).map {
+                    it.first.name to it.second.name
+                }
+            }"
+        )
+
+        changedMethods?.let {
+            for ((oldMethod, newMethod) in it) {
+                processedMethods.incrementAndGet()
+                lateinit var methodName: String
+                lateinit var oldCode: String
+                lateinit var newCode: String
+                lateinit var oldComment: String
+                lateinit var newComment: String
+
+                ApplicationManager.getApplication().runReadAction {
+                    methodName = newMethod.qualifiedName
+                    oldCode = oldMethod.textWithoutDoc
+                    newCode = newMethod.textWithoutDoc
+                    oldComment = oldMethod.docComment?.text ?: ""
+                    newComment = newMethod.docComment?.text ?: ""
                 }
 
+                if (oldCode.trim() == newCode.trim()) {
+                    continue
+                }
+
+                val methodRefactorings = methodsRefactorings.getOrDefault(
+                    methodName,
+                    mutableListOf()
+                )
+
+                val metric =
+                    metricsModel.calculateMetrics(oldCode, newCode, newComment, methodRefactorings)
+                        ?: continue
+
+                saveMetric(
+                    commit.id.toShortString(),
+                    fileName,
+                    oldCode,
+                    newCode,
+                    oldComment,
+                    newComment,
+                    metric
+                )
+
             }
-            onFinish()
         }
     }
 
     fun onFinish() {
         LOG.info(
-            "[HeadlessCommentUpdater] Found ${datasetExamples.size} examples," +
-            " processed: commits $processedCommits methods $processedMethods" +
-            " file changes $processedFileChanges"
+            " ${Thread.currentThread().name} [HeadlessCommentUpdater] Found ${foundSamples} examples," +
+            " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
+            " file changes ${processedFileChanges.get()}"
         )
-        val jsonString = Gson().toJson(datasetExamples)
-        File(OUTPUT_PATH).writeText(jsonString)
+        outputWriter.write("]")
+        outputWriter.close()
         exitProcess(0)
     }
 
@@ -191,18 +236,20 @@ class PluginRunner : ApplicationStarter {
         commitId: String, fileName: String, oldCode: String, newCode: String, oldComment: String, newComment: String,
         metric: MethodMetric
     ) {
-        datasetExamples.add(
-            DatasetExample(
-                oldCode,
-                newCode,
-                oldComment,
-                newComment,
-                commitId,
-                fileName,
-                metric
-            )
+        foundSamples.incrementAndGet()
+        val datasetExample = DatasetExample(
+            oldCode,
+            newCode,
+            oldComment,
+            newComment,
+            commitId,
+            fileName,
+            metric
         )
-
+        // Commented to check memory problems
+//        val jsonExample = gson.toJson(datasetExample)
+//        outputWriter.write(jsonExample)
+//        outputWriter.write(",")
     }
 
     /**
@@ -269,6 +316,7 @@ class PluginRunner : ApplicationStarter {
             }.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }
+
         }
 
         return methodsWithNames
@@ -294,6 +342,7 @@ class PluginRunner : ApplicationStarter {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }.toTypedArray())
 
+            psiFile
         }
 
         return namesToMethods
