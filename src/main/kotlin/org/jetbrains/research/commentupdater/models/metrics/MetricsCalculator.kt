@@ -73,7 +73,6 @@ class MetricsCalculator {
         }
 
         val filterSubTokens = {s: String -> s.any { c -> c.isLetter() }}
-        // todo: filter code subtokens from braces, numbers and so on
 
         val oldSubTokens = CodeCommentTokenizer.subTokenizeCode(oldCode).filter(filterSubTokens)
         val newSubTokens = CodeCommentTokenizer.subTokenizeCode(newCode).filter(filterSubTokens)
