@@ -1,5 +1,3 @@
-import com.beust.klaxon.Klaxon
-import com.beust.klaxon.json
 import com.google.gson.Gson
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.impl.ProjectUtil
@@ -20,14 +18,12 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
-import com.jetbrains.rd.util.string.printToString
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
-import javassist.CtNewMethod
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
