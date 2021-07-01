@@ -31,7 +31,6 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.annotations.Nullable
 import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
-import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
