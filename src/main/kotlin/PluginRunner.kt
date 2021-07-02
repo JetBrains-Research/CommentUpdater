@@ -32,10 +32,7 @@ import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import org.refactoringminer.api.GitService
-import org.refactoringminer.api.Refactoring
-import org.refactoringminer.api.RefactoringHandler
-import org.refactoringminer.api.RefactoringType
+import org.refactoringminer.api.*
 import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
 import org.refactoringminer.util.GitServiceImpl
 import java.io.File
@@ -58,16 +55,25 @@ class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
 
-    val OUTPUT_PATH = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/dataset.json"
+    // Saving data
+    val OUTPUT_PATH = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/dataset_test.json"
     val gson = Gson()
+    val outputFile = File(OUTPUT_PATH)
+    val outputWriter = FileWriter(outputFile, true)
 
+    // Refactoring Miner
+    var gitService: GitService = GitServiceImpl()
+    var refactoringMiner: GitHistoryRefactoringMiner = GitHistoryRefactoringMinerImpl()
+
+    // Metric model
     val metricsModel = MetricsCalculator()
+
+    // Internal counters
     var foundSamples = AtomicInteger(0)
     var processedCommits = AtomicInteger(0)
     var processedMethods = AtomicInteger(0)
     var processedFileChanges = AtomicInteger(0)
-    val outputFile = File(OUTPUT_PATH)
-    val outputWriter = FileWriter(outputFile, true)
+
     private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.PluginRunner")
 
     override fun main(args: Array<out String>) {
@@ -89,6 +95,38 @@ class PluginRunner : ApplicationStarter {
             Thread.sleep(50)
             LOG.info("[HeadlessCommentUpdater] processing some stuff")
         }
+    }
+
+    fun extractCommitRefactorings(repo: Repository, commitId: String): List<Refactoring> {
+        val methodsRefactorings = mutableListOf<Refactoring>()
+        refactoringMiner.detectAtCommit(repo, commitId, object : RefactoringHandler() {
+            override fun handle(commitId: String, refactorings: List<Refactoring>) {
+               methodsRefactorings.addAll(refactorings.filter {
+                   it.refactoringType in RefactoringExtractor.REFACTORINGS
+               })
+            }
+        })
+        return methodsRefactorings
+    }
+
+    fun commitRefactoringsToFiles(commitRefactorings: List<Refactoring>): HashMap<String, MutableList<Refactoring>> {
+        val filesToRefactorings = hashMapOf<String, MutableList<Refactoring>>()
+        commitRefactorings.forEach {
+            refactoring ->
+            if (refactoring.involvedClassesAfterRefactoring.isEmpty()) {
+                // Shouldn't happen, we filter only method refactoring, which are attached to classes
+                LOG.warn("[HeadlessCommentUpdater] Can't find parent class for refactoring")
+            } else {
+                // involvedClassesAfterRefactoring contain pairs (fileName, className)
+                val fileName = refactoring.involvedClassesAfterRefactoring.first().key
+                if (filesToRefactorings.containsKey(fileName)) {
+                    filesToRefactorings[fileName]?.add(refactoring)
+                } else {
+                    filesToRefactorings[fileName] = mutableListOf(refactoring)
+                }
+            }
+        }
+        return filesToRefactorings
     }
 
     private fun onStart() {
@@ -121,6 +159,8 @@ class PluginRunner : ApplicationStarter {
             GitRepositoryManager::class.java
         )
 
+        val jgitRepo = gitService.openRepository(projectPath)
+
         // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
         // To understand why we should call addInitializationRequest
 
@@ -132,19 +172,24 @@ class PluginRunner : ApplicationStarter {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
 
                     runBlocking {
-
                         walkRepo(repo).forEach { commit ->
                             processedCommits.incrementAndGet()
-                              getChanges(commit, ".java").map { change ->
-                                // Concurrency can be commented to check memory leaks
-                                  //async(Dispatchers.Default) {
-                                    try {
-                                        processChange(change, commit, project)
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
-                                    }
-                                //}
+
+                            val commitRefactorings = extractCommitRefactorings(jgitRepo, commit.id.toString())
+                            val filesToRefactorings = commitRefactoringsToFiles(commitRefactorings)
+
+                            getChanges(commit, ".java").map { change ->
+                              // Concurrency can be commented to check memory leaks
+                                //async(Dispatchers.Default) {
+                                  try {
+                                      val fileName = change.afterRevision?.file?.name ?: ""
+                                      val fileRefactorings = filesToRefactorings[fileName] ?: listOf<Refactoring>()
+                                      processChange(change, commit, project, fileRefactorings)
+                                  } catch (e: Exception) {
+                                      e.printStackTrace()
+                                      LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
+                                  }
+                              //}
                             }//.awaitAll()
                         }
                     }
@@ -163,13 +208,12 @@ class PluginRunner : ApplicationStarter {
     fun processChange(
         change: Change,
         commit: GitCommit,
-        project: @Nullable Project
+        project: @Nullable Project,
+        refactorings: List<Refactoring>
     ) {
         processedFileChanges.incrementAndGet()
         val fileName = change.afterRevision?.file?.name ?: ""
         LOG.info(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
-
-        val refactorings = RefactoringExtractor.extract(change)
 
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
 
