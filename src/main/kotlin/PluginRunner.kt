@@ -5,11 +5,11 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsException
+import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.impl.ProjectLevelVcsManagerImpl
 import com.intellij.openapi.vcs.impl.VcsInitObject
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -24,22 +24,25 @@ import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
+import org.eclipse.jgit.lib.Repository
 import org.jetbrains.annotations.Nullable
 import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import org.refactoringminer.api.GitService
 import org.refactoringminer.api.Refactoring
+import org.refactoringminer.api.RefactoringHandler
 import org.refactoringminer.api.RefactoringType
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
+import org.refactoringminer.util.GitServiceImpl
 import java.io.File
 import java.io.FileWriter
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
+
 
 data class DatasetExample(
     val oldCode: String,
@@ -55,7 +58,7 @@ class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
 
-    val OUTPUT_PATH = "C:\\Users\\pavlo\\IdeaProjects\\CommentUpdater\\dataset.json"
+    val OUTPUT_PATH = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/dataset.json"
     val gson = Gson()
 
     val metricsModel = MetricsCalculator()
@@ -73,10 +76,19 @@ class PluginRunner : ApplicationStarter {
 
 
         // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "C:\\Users\\pavlo\\IdeaProjects\\guava"
+        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/exampleproject"
 
         onStart()
+
         inspectProject(projectPath)
+    }
+
+    // TODO: Remove, debug function
+    private fun fakeProcess() {
+        while(true) {
+            Thread.sleep(50)
+            LOG.info("[HeadlessCommentUpdater] processing some stuff")
+        }
     }
 
     private fun onStart() {
@@ -114,23 +126,26 @@ class PluginRunner : ApplicationStarter {
 
         vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
             try {
+                LOG.warn("[HeadlessCommentUpdater] Initialization request")
                 val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
+
                     runBlocking {
+
                         walkRepo(repo).forEach { commit ->
                             processedCommits.incrementAndGet()
-                            getChanges(commit, ".java").map { change ->
+                              getChanges(commit, ".java").map { change ->
                                 // Concurrency can be commented to check memory leaks
-                                  async(Dispatchers.Default) {
+                                  //async(Dispatchers.Default) {
                                     try {
                                         processChange(change, commit, project)
                                     } catch (e: Exception) {
                                         e.printStackTrace()
                                         LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
                                     }
-                                }
-                            }.awaitAll()
+                                //}
+                            }//.awaitAll()
                         }
                     }
 
@@ -155,6 +170,7 @@ class PluginRunner : ApplicationStarter {
         LOG.info(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
 
         val refactorings = RefactoringExtractor.extract(change)
+
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
 
         val changedMethods = try {
@@ -242,9 +258,9 @@ class PluginRunner : ApplicationStarter {
             metric
         )
         // Commented to check memory problems
-//        val jsonExample = gson.toJson(datasetExample)
-//        outputWriter.write(jsonExample)
-//        outputWriter.write(",")
+        val jsonExample = gson.toJson(datasetExample)
+        outputWriter.write(jsonExample)
+        outputWriter.write(",")
     }
 
     /**
