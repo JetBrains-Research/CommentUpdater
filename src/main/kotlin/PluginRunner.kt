@@ -109,7 +109,7 @@ class PluginRunner : ApplicationStarter {
         return methodsRefactorings
     }
 
-    fun commitRefactoringsToFiles(commitRefactorings: List<Refactoring>): HashMap<String, MutableList<Refactoring>> {
+    fun commitRefactoringsToFiles(commitRefactorings: List<Refactoring>, projectPath: String): HashMap<String, MutableList<Refactoring>> {
         val filesToRefactorings = hashMapOf<String, MutableList<Refactoring>>()
         commitRefactorings.forEach {
             refactoring ->
@@ -118,11 +118,12 @@ class PluginRunner : ApplicationStarter {
                 LOG.warn("[HeadlessCommentUpdater] Can't find parent class for refactoring")
             } else {
                 // involvedClassesAfterRefactoring contain pairs (fileName, className)
-                val fileName = refactoring.involvedClassesAfterRefactoring.first().key
-                if (filesToRefactorings.containsKey(fileName)) {
-                    filesToRefactorings[fileName]?.add(refactoring)
+                val localFileName = refactoring.involvedClassesAfterRefactoring.first().key
+                val fullFileName = File(projectPath).resolve(localFileName).path
+                if (filesToRefactorings.containsKey(fullFileName)) {
+                    filesToRefactorings[fullFileName]?.add(refactoring)
                 } else {
-                    filesToRefactorings[fileName] = mutableListOf(refactoring)
+                    filesToRefactorings[fullFileName] = mutableListOf(refactoring)
                 }
             }
         }
@@ -176,14 +177,14 @@ class PluginRunner : ApplicationStarter {
                             processedCommits.incrementAndGet()
 
                             val commitRefactorings = extractCommitRefactorings(jgitRepo, commit.id.toString())
-                            val filesToRefactorings = commitRefactoringsToFiles(commitRefactorings)
+                            val filesToRefactorings = commitRefactoringsToFiles(commitRefactorings, projectPath)
 
                             getChanges(commit, ".java").map { change ->
                               // Concurrency can be commented to check memory leaks
                                 //async(Dispatchers.Default) {
                                   try {
-                                      val fileName = change.afterRevision?.file?.name ?: ""
-                                      val fileRefactorings = filesToRefactorings[fileName] ?: listOf<Refactoring>()
+                                      val filePath = change.afterRevision?.file?.path ?: ""
+                                      val fileRefactorings = filesToRefactorings[filePath] ?: listOf<Refactoring>()
                                       processChange(change, commit, project, fileRefactorings)
                                   } catch (e: Exception) {
                                       e.printStackTrace()
