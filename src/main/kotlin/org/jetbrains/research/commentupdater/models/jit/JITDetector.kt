@@ -140,12 +140,23 @@ class JITDetector {
             "code_features" to codeFeaturesTensor
         )
 
-        val modelOut = (session.run(inputs)[0] as OnnxTensor)
+        var probability: Float = 0f
+        session.run(inputs).use {
+                results ->
+            val modelOut = results[0] as OnnxTensor
+            val zeroSoftmax = kotlin.math.exp(modelOut.floatBuffer[0])
+            val oneSoftmax = kotlin.math.exp(modelOut.floatBuffer[1])
+            probability = oneSoftmax / (zeroSoftmax + oneSoftmax)
+        }
 
-        val zeroSoftmax = kotlin.math.exp(modelOut.floatBuffer[0])
-        val oneSoftmax = kotlin.math.exp(modelOut.floatBuffer[1])
-        val probability = oneSoftmax / (zeroSoftmax + oneSoftmax)
+        // Close all opened tensors from onnx
+        commentIdsTensor.close()
+        commentLensTensor.close()
+        commentFeaturesTensor.close()
 
+        codeIdsTensor.close()
+        codeLensTensor.close()
+        codeFeaturesTensor.close()
 
         LOG.info("[CommentUpdater] JIT model result: method ${newMethod.name}, probability: ${probability}")
         return probability >= TRUE_PROB
