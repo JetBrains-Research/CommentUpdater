@@ -89,13 +89,7 @@ class PluginRunner : ApplicationStarter {
         inspectProject(projectPath)
     }
 
-    // TODO: Remove, debug function
-    private fun fakeProcess() {
-        while(true) {
-            Thread.sleep(50)
-            LOG.info("[HeadlessCommentUpdater] processing some stuff")
-        }
-    }
+
 
 
     private fun onStart() {
