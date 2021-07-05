@@ -24,6 +24,9 @@ import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.eclipse.jgit.lib.Repository
 import org.jetbrains.annotations.Nullable
@@ -90,8 +93,6 @@ class PluginRunner : ApplicationStarter {
     }
 
 
-
-
     private fun onStart() {
         //start json list
         outputFile.writeText("[")
@@ -128,27 +129,24 @@ class PluginRunner : ApplicationStarter {
 
         vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
             try {
-                LOG.warn("[HeadlessCommentUpdater] Initialization request")
                 val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
 
                     runBlocking {
-                        walkRepo(repo).forEach { commit ->
-                            processedCommits.incrementAndGet()
-
-                            getChanges(commit, ".java").map { change ->
-                              // Concurrency can be commented to check memory leaks
-                                //async(Dispatchers.Default) {
-                                  try {
-                                      processChange(change, commit, project)
-                                  } catch (e: Exception) {
-                                      e.printStackTrace()
-                                      LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
-                                  }
-                              //}
-                            }//.awaitAll()
-                        }
+                        walkRepo(repo).map { commit ->
+                            async(Dispatchers.Default) {
+                                processedCommits.incrementAndGet()
+                                getChanges(commit, ".java").forEach { change ->
+                                    try {
+                                        processChange(change, commit, project)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
+                                    }
+                                }
+                            }
+                        }.awaitAll()
                     }
 
                 }
@@ -257,7 +255,7 @@ class PluginRunner : ApplicationStarter {
             fileName,
             metric
         )
-        // Commented to check memory problems
+
         val jsonExample = gson.toJson(datasetExample)
         outputWriter.write(jsonExample)
         outputWriter.write(",")
