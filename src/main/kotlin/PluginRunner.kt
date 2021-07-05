@@ -97,38 +97,6 @@ class PluginRunner : ApplicationStarter {
         }
     }
 
-    fun extractCommitRefactorings(repo: Repository, commitId: String): List<Refactoring> {
-        val methodsRefactorings = mutableListOf<Refactoring>()
-        refactoringMiner.detectAtCommit(repo, commitId, object : RefactoringHandler() {
-            override fun handle(commitId: String, refactorings: List<Refactoring>) {
-               methodsRefactorings.addAll(refactorings.filter {
-                   it.refactoringType in RefactoringExtractor.REFACTORINGS
-               })
-            }
-        })
-        return methodsRefactorings
-    }
-
-    fun commitRefactoringsToFiles(commitRefactorings: List<Refactoring>, projectPath: String): HashMap<String, MutableList<Refactoring>> {
-        val filesToRefactorings = hashMapOf<String, MutableList<Refactoring>>()
-        commitRefactorings.forEach {
-            refactoring ->
-            if (refactoring.involvedClassesAfterRefactoring.isEmpty()) {
-                // Shouldn't happen, we filter only method refactoring, which are attached to classes
-                LOG.warn("[HeadlessCommentUpdater] Can't find parent class for refactoring")
-            } else {
-                // involvedClassesAfterRefactoring contain pairs (fileName, className)
-                val localFileName = refactoring.involvedClassesAfterRefactoring.first().key
-                val fullFileName = File(projectPath).resolve(localFileName).path
-                if (filesToRefactorings.containsKey(fullFileName)) {
-                    filesToRefactorings[fullFileName]?.add(refactoring)
-                } else {
-                    filesToRefactorings[fullFileName] = mutableListOf(refactoring)
-                }
-            }
-        }
-        return filesToRefactorings
-    }
 
     private fun onStart() {
         //start json list
@@ -160,7 +128,6 @@ class PluginRunner : ApplicationStarter {
             GitRepositoryManager::class.java
         )
 
-        val jgitRepo = gitService.openRepository(projectPath)
 
         // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
         // To understand why we should call addInitializationRequest
@@ -176,16 +143,11 @@ class PluginRunner : ApplicationStarter {
                         walkRepo(repo).forEach { commit ->
                             processedCommits.incrementAndGet()
 
-                            val commitRefactorings = extractCommitRefactorings(jgitRepo, commit.id.toString())
-                            val filesToRefactorings = commitRefactoringsToFiles(commitRefactorings, projectPath)
-
                             getChanges(commit, ".java").map { change ->
                               // Concurrency can be commented to check memory leaks
                                 //async(Dispatchers.Default) {
                                   try {
-                                      val filePath = change.afterRevision?.file?.path ?: ""
-                                      val fileRefactorings = filesToRefactorings[filePath] ?: listOf<Refactoring>()
-                                      processChange(change, commit, project, fileRefactorings)
+                                      processChange(change, commit, project)
                                   } catch (e: Exception) {
                                       e.printStackTrace()
                                       LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
@@ -209,13 +171,12 @@ class PluginRunner : ApplicationStarter {
     fun processChange(
         change: Change,
         commit: GitCommit,
-        project: @Nullable Project,
-        refactorings: List<Refactoring>
-    ) {
+        project: @Nullable Project) {
         processedFileChanges.incrementAndGet()
         val fileName = change.afterRevision?.file?.name ?: ""
         LOG.info(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
 
+        val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
 
         val changedMethods = try {
