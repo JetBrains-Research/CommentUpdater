@@ -40,20 +40,29 @@ class SimilarityModel {
         val array1 = F64Array(tokens1.size, EMBEDDING_SIZE)
         for(i in 0 until tokens1.size) {
             val id = getIdOrUnk(tokens1[i], vocab)
-            val inputs = mapOf("id" to ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env))
-            val embedding = embeddings.run(inputs)[0] as OnnxTensor
-            for(j in 0 until EMBEDDING_SIZE) {
-                array1[i, j] = embedding.floatBuffer[j].toDouble()
+            val idTensor = ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env)
+            val inputs = mapOf("id" to idTensor)
+            embeddings.run(inputs).use { results ->
+                val embedding = results[0] as OnnxTensor
+                for(j in 0 until EMBEDDING_SIZE) {
+                    array1[i, j] = embedding.floatBuffer[j].toDouble()
+                }
             }
+            idTensor?.close()
         }
         val array2 = F64Array(tokens2.size, EMBEDDING_SIZE)
         for (i in 0 until tokens2.size) {
             val id = getIdOrUnk(tokens2[i], vocab)
-            val inputs = mapOf("id" to ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env))
-            val embedding = embeddings.run(inputs)[0] as OnnxTensor
-            for(j in 0 until EMBEDDING_SIZE) {
-                array2[i, j] = embedding.floatBuffer[j].toDouble()
+            val idTensor = ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env)
+            val inputs = mapOf("id" to idTensor)
+            embeddings.run(inputs).use {
+                results ->
+                val embedding = results[0] as OnnxTensor
+                for(j in 0 until EMBEDDING_SIZE) {
+                    array2[i, j] = embedding.floatBuffer[j].toDouble()
+                }
             }
+            idTensor?.close()
         }
         val cosSimArray = F64Array(tokens1.size, tokens2.size)
         for(i in 0 until tokens1.size) {

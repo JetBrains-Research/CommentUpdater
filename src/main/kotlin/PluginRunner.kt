@@ -82,7 +82,7 @@ class PluginRunner : ApplicationStarter {
 
 
         // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/exampleproject"
+        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/guava"
 
         onStart()
 
@@ -358,8 +358,6 @@ class PluginRunner : ApplicationStarter {
             namesToMethods = hashMapOf<String, PsiMethod>(*methods.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }.toTypedArray())
-
-            psiFile
         }
 
         return namesToMethods

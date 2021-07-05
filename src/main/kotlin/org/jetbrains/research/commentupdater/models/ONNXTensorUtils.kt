@@ -3,6 +3,10 @@ package org.jetbrains.research.commentupdater.models
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 
+/**
+ * Converts List arrays to ONNXTensors
+ * This tensors must be closed!
+ */
 object ONNXTensorUtils {
 
     fun twoDListToTensor(data: List<List<Long>>, environment: OrtEnvironment): OnnxTensor? {

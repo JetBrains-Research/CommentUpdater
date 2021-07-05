@@ -23,7 +23,7 @@ dependencies {
 
     implementation "io.github.java-diff-utils:java-diff-utils:4.9"
     implementation "io.kinference:inference:0.1.2"
-    implementation "com.microsoft.onnxruntime:onnxruntime:1.7.0"
+    implementation "com.microsoft.onnxruntime:onnxruntime:1.8.0"
     implementation 'com.beust:klaxon:5.5'
     implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
     implementation 'org.jetbrains.bio:viktor:1.1.0'
