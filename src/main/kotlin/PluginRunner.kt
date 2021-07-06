@@ -85,7 +85,7 @@ class PluginRunner : ApplicationStarter {
 
 
         // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/guava"
+        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/exampleproject"
 
         onStart()
 
@@ -96,6 +96,27 @@ class PluginRunner : ApplicationStarter {
     private fun onStart() {
         //start json list
         outputFile.writeText("[")
+    }
+
+
+    enum class LogLevel {
+        INFO, WARN, ERROR
+    }
+
+    fun  log(level: LogLevel, message: String, applicationTag: String = "[HeadlessCommentUpdater]") {
+
+        println("${level.name} $applicationTag $message")
+        when (level) {
+            LogLevel.INFO -> {
+                LOG.info("$applicationTag $message")
+            }
+            LogLevel.WARN -> {
+                LOG.warn("$applicationTag $message")
+            }
+            LogLevel.ERROR -> {
+                LOG.error("$applicationTag $message")
+            }
+        }
     }
 
     fun inspectProject(projectPath: String) {
@@ -166,7 +187,8 @@ class PluginRunner : ApplicationStarter {
         project: @Nullable Project) {
         processedFileChanges.incrementAndGet()
         val fileName = change.afterRevision?.file?.name ?: ""
-        LOG.info(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Commit: ${commit.id} File changed: ${fileName}")
+
+        log(LogLevel.INFO, " ${Thread.currentThread().name} [HeadlessCommentUpdater] Commit: ${commit.id} File changed: $fileName")
 
         val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
@@ -174,17 +196,15 @@ class PluginRunner : ApplicationStarter {
         val changedMethods = try {
             extractChangedMethods(project, change, refactorings)
         } catch (e: VcsException) {
-            LOG.warn(" ${Thread.currentThread().name} HeadlessCommentUpdater] Unexpected VCS exception: ${e.stackTrace}")
+            log(LogLevel.WARN, " ${Thread.currentThread().name} HeadlessCommentUpdater] Unexpected VCS exception: ${e.stackTrace}")
             null
         }
 
-        LOG.info(
-            " ${Thread.currentThread().name} [HeadlessCommentUpdater] method changes: ${
-                (changedMethods ?: mutableListOf()).map {
-                    it.first.name to it.second.name
-                }
-            }"
-        )
+        log(LogLevel.INFO, " ${Thread.currentThread().name} [HeadlessCommentUpdater] method changes: ${
+            (changedMethods ?: mutableListOf()).map {
+                it.first.name to it.second.name
+            }
+        }")
 
         changedMethods?.let {
             for ((oldMethod, newMethod) in it) {
@@ -231,11 +251,9 @@ class PluginRunner : ApplicationStarter {
     }
 
     fun onFinish() {
-        LOG.info(
-            " ${Thread.currentThread().name} [HeadlessCommentUpdater] Found ${foundSamples} examples," +
-            " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
-            " file changes ${processedFileChanges.get()}"
-        )
+        log(LogLevel.INFO, " ${Thread.currentThread().name} [HeadlessCommentUpdater] Found ${foundSamples} examples," +
+                " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
+                " file changes ${processedFileChanges.get()}")
         outputWriter.write("]")
         outputWriter.close()
         exitProcess(0)
