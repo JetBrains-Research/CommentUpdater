@@ -85,7 +85,7 @@ class PluginRunner : ApplicationStarter {
 
 
         // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/exampleproject"
+        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/guava"
 
         onStart()
 
@@ -157,22 +157,22 @@ class PluginRunner : ApplicationStarter {
                     runBlocking {
                         walkRepo(repo).map { commit ->
                             async(Dispatchers.Default) {
-                                processedCommits.incrementAndGet()
                                 getChanges(commit, ".java").forEach { change ->
                                     try {
                                         processChange(change, commit, project)
                                     } catch (e: Exception) {
+                                        log(LogLevel.WARN, "Error occurred during processing ${commit.id}", logThread = true)
                                         e.printStackTrace()
-                                        log(LogLevel.WARN, "Error occured during processing ${commit.id}", logThread = true)
                                     }
                                 }
+                                processedCommits.incrementAndGet()
                             }
                         }.awaitAll()
                     }
 
                 }
             } catch (e: Exception) {
-                println("Failed with an exception: ${e.toString()}")
+                log(LogLevel.ERROR, "Failed with an exception: $e")
                 e.printStackTrace()
             }
             finally {
@@ -188,7 +188,7 @@ class PluginRunner : ApplicationStarter {
         processedFileChanges.incrementAndGet()
         val fileName = change.afterRevision?.file?.name ?: ""
 
-        log(LogLevel.INFO, "Commit: ${commit.id} File changed: $fileName", logThread = true)
+        log(LogLevel.INFO, "Commit: ${commit.id.toShortString()} num ~ ${processedCommits.get()} File changed: $fileName", logThread = true)
 
         val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
@@ -199,12 +199,6 @@ class PluginRunner : ApplicationStarter {
             log(LogLevel.WARN, "Unexpected VCS exception: ${e.stackTrace}", logThread = true)
             null
         }
-
-        log(LogLevel.INFO, "method changes: ${
-            (changedMethods ?: mutableListOf()).map {
-                it.first.name to it.second.name
-            }
-        }", logThread = true)
 
         changedMethods?.let {
             for ((oldMethod, newMethod) in it) {
