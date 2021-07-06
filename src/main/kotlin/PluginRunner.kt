@@ -81,7 +81,7 @@ class PluginRunner : ApplicationStarter {
 
     override fun main(args: Array<out String>) {
 
-        LOG.info(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Starting application")
+        log(LogLevel.INFO, "Starting Application")
 
 
         // path to cloned project: https://github.com/google/guava.git
@@ -103,18 +103,19 @@ class PluginRunner : ApplicationStarter {
         INFO, WARN, ERROR
     }
 
-    fun  log(level: LogLevel, message: String, applicationTag: String = "[HeadlessCommentUpdater]") {
+    fun  log(level: LogLevel, message: String, logThread: Boolean = false,
+             applicationTag: String = "[HeadlessCommentUpdater]") {
+        val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag $message"
 
-        println("${level.name} $applicationTag $message")
         when (level) {
             LogLevel.INFO -> {
-                LOG.info("$applicationTag $message")
+                println(fullLogMessage)
             }
             LogLevel.WARN -> {
-                LOG.warn("$applicationTag $message")
+                System.err.println(fullLogMessage)
             }
             LogLevel.ERROR -> {
-                LOG.error("$applicationTag $message")
+                System.err.println(fullLogMessage)
             }
         }
     }
@@ -153,7 +154,6 @@ class PluginRunner : ApplicationStarter {
                 val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
-
                     runBlocking {
                         walkRepo(repo).map { commit ->
                             async(Dispatchers.Default) {
@@ -163,7 +163,7 @@ class PluginRunner : ApplicationStarter {
                                         processChange(change, commit, project)
                                     } catch (e: Exception) {
                                         e.printStackTrace()
-                                        LOG.warn(" ${Thread.currentThread().name} [HeadlessCommentUpdater] Error occurred during processing ${commit.id}")
+                                        log(LogLevel.WARN, "Error occured during processing ${commit.id}", logThread = true)
                                     }
                                 }
                             }
@@ -188,7 +188,7 @@ class PluginRunner : ApplicationStarter {
         processedFileChanges.incrementAndGet()
         val fileName = change.afterRevision?.file?.name ?: ""
 
-        log(LogLevel.INFO, " ${Thread.currentThread().name} [HeadlessCommentUpdater] Commit: ${commit.id} File changed: $fileName")
+        log(LogLevel.INFO, "Commit: ${commit.id} File changed: $fileName", logThread = true)
 
         val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
@@ -196,15 +196,15 @@ class PluginRunner : ApplicationStarter {
         val changedMethods = try {
             extractChangedMethods(project, change, refactorings)
         } catch (e: VcsException) {
-            log(LogLevel.WARN, " ${Thread.currentThread().name} HeadlessCommentUpdater] Unexpected VCS exception: ${e.stackTrace}")
+            log(LogLevel.WARN, "Unexpected VCS exception: ${e.stackTrace}", logThread = true)
             null
         }
 
-        log(LogLevel.INFO, " ${Thread.currentThread().name} [HeadlessCommentUpdater] method changes: ${
+        log(LogLevel.INFO, "method changes: ${
             (changedMethods ?: mutableListOf()).map {
                 it.first.name to it.second.name
             }
-        }")
+        }", logThread = true)
 
         changedMethods?.let {
             for ((oldMethod, newMethod) in it) {
@@ -251,9 +251,9 @@ class PluginRunner : ApplicationStarter {
     }
 
     fun onFinish() {
-        log(LogLevel.INFO, " ${Thread.currentThread().name} [HeadlessCommentUpdater] Found ${foundSamples} examples," +
+        log(LogLevel.INFO, "Found ${foundSamples} examples," +
                 " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
-                " file changes ${processedFileChanges.get()}")
+                " file changes ${processedFileChanges.get()}", logThread = true)
         outputWriter.write("]")
         outputWriter.close()
         exitProcess(0)
