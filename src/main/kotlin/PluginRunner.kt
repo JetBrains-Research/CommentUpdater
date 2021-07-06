@@ -28,7 +28,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
-import org.eclipse.jgit.lib.Repository
 import org.jetbrains.annotations.Nullable
 import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
@@ -49,7 +48,10 @@ data class DatasetExample(
     val newCode: String,
     val oldComment: String,
     val newComment: String,
+    val oldMethodName: String,
+    val newMethodName: String,
     val commitId: String,
+    val commitTime: String,
     val fileName: String,
     val metric: MethodMetric
 )
@@ -203,14 +205,16 @@ class PluginRunner : ApplicationStarter {
         changedMethods?.let {
             for ((oldMethod, newMethod) in it) {
                 processedMethods.incrementAndGet()
-                lateinit var methodName: String
+                lateinit var newMethodName: String
+                lateinit var oldMethodName: String
                 lateinit var oldCode: String
                 lateinit var newCode: String
                 lateinit var oldComment: String
                 lateinit var newComment: String
 
                 ApplicationManager.getApplication().runReadAction {
-                    methodName = newMethod.qualifiedName
+                    newMethodName = newMethod.qualifiedName
+                    oldMethodName = oldMethod.qualifiedName
                     oldCode = oldMethod.textWithoutDoc
                     newCode = newMethod.textWithoutDoc
                     oldComment = oldMethod.docComment?.text ?: ""
@@ -222,7 +226,7 @@ class PluginRunner : ApplicationStarter {
                 }
 
                 val methodRefactorings = methodsRefactorings.getOrDefault(
-                    methodName,
+                    newMethodName,
                     mutableListOf()
                 )
 
@@ -231,13 +235,16 @@ class PluginRunner : ApplicationStarter {
                         ?: continue
 
                 saveMetric(
-                    commit.id.toShortString(),
-                    fileName,
-                    oldCode,
-                    newCode,
-                    oldComment,
-                    newComment,
-                    metric
+                    commitId = commit.id.toString(),
+                    fileName = fileName,
+                    oldCode = oldCode,
+                    newCode = newCode,
+                    oldComment = oldComment,
+                    newComment = newComment,
+                    metric = metric,
+                    oldMethodName = oldMethodName,
+                    newMethodName = newMethodName,
+                    commitTime = commit.timestamp.toString()
                 )
 
             }
@@ -254,18 +261,22 @@ class PluginRunner : ApplicationStarter {
     }
 
     fun saveMetric(
-        commitId: String, fileName: String, oldCode: String, newCode: String, oldComment: String, newComment: String,
+        commitId: String, commitTime: String, fileName: String, oldCode: String, newCode: String,
+        oldComment: String, newComment: String, oldMethodName: String, newMethodName: String,
         metric: MethodMetric
     ) {
         foundSamples.incrementAndGet()
         val datasetExample = DatasetExample(
-            oldCode,
-            newCode,
-            oldComment,
-            newComment,
-            commitId,
-            fileName,
-            metric
+            oldCode = oldCode,
+            newCode = newCode,
+            oldComment = oldComment,
+            newComment = newComment,
+            commitId = commitId,
+            fileName = fileName,
+            metric = metric,
+            commitTime = commitTime,
+            oldMethodName = oldMethodName,
+            newMethodName = newMethodName
         )
 
         val jsonExample = gson.toJson(datasetExample)
