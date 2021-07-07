@@ -87,7 +87,7 @@ class PluginRunner : ApplicationStarter {
 
 
         // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/guava"
+        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/RxJava"
 
         onStart()
 
@@ -100,27 +100,29 @@ class PluginRunner : ApplicationStarter {
         outputFile.writeText("[")
     }
 
+    companion object {
+        enum class LogLevel {
+            INFO, WARN, ERROR
+        }
 
-    enum class LogLevel {
-        INFO, WARN, ERROR
-    }
+        fun  log(level: LogLevel, message: String, logThread: Boolean = false,
+                 applicationTag: String = "[HeadlessCommentUpdater]") {
+            val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag $message"
 
-    fun  log(level: LogLevel, message: String, logThread: Boolean = false,
-             applicationTag: String = "[HeadlessCommentUpdater]") {
-        val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag $message"
-
-        when (level) {
-            LogLevel.INFO -> {
-                println(fullLogMessage)
-            }
-            LogLevel.WARN -> {
-                System.err.println(fullLogMessage)
-            }
-            LogLevel.ERROR -> {
-                System.err.println(fullLogMessage)
+            when (level) {
+                LogLevel.INFO -> {
+                    println(fullLogMessage)
+                }
+                LogLevel.WARN -> {
+                    System.err.println(fullLogMessage)
+                }
+                LogLevel.ERROR -> {
+                    System.err.println(fullLogMessage)
+                }
             }
         }
     }
+
 
     fun inspectProject(projectPath: String) {
         val project = ProjectUtil.openOrImport(projectPath, null, true) ?: return
