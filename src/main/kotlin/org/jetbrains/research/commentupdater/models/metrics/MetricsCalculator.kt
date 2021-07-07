@@ -1,5 +1,6 @@
 package org.jetbrains.research.commentupdater.models
 
+import PluginRunner
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.javadoc.PsiDocComment
 import org.jetbrains.research.commentupdater.CodeCommentDiffs
@@ -122,6 +123,7 @@ class MetricsCalculator {
             true
         )
 
+
         val newCodeCommentSim = simModel.compute(
             newSubTokens,
             commentSubTokens,
@@ -149,6 +151,7 @@ class MetricsCalculator {
             0.0
         }
 
+
         val newChangedCommentSim = if (addedStatements.isNotEmpty()) {
             simModel.compute(
                 addedStatements,
@@ -158,6 +161,7 @@ class MetricsCalculator {
         } else {
             0.0
         }
+
 
         val oldNewChangedSimDist = (newChangedCommentSim - oldChangedCommentSim).absoluteValue
 

@@ -8,6 +8,10 @@ import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.research.commentupdater.models.ONNXTensorUtils
 import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
+import org.ojalgo.array.Primitive64Array
+import org.ojalgo.function.constant.PrimitiveMath
+import org.ojalgo.matrix.Primitive64Matrix
+import org.ojalgo.matrix.store.Primitive64Store
 import java.io.File
 import kotlin.math.pow
 
@@ -36,61 +40,66 @@ class SimilarityModel {
             embeddingConfig.commentVocab to commentEmbeddingSession
         }
 
-        // Victor library by JBR: https://blog.jetbrains.com/kotlin/2021/03/viktor-efficient-vectorized-computations-in-kotlin/
-        val array1 = F64Array(tokens1.size, EMBEDDING_SIZE)
-        for(i in 0 until tokens1.size) {
+        val modifier = PrimitiveMath.ROOT.parameter(2)
+        val storeFactory = Primitive64Store.FACTORY
+        val matrixFactory = Primitive64Matrix.FACTORY
+        // PrimitiveMatrix.Factory and PrimitiveDenseStore.Factory are very similar.
+        // Every factory in ojAlgo that makes 2D-structures
+        // extends/implements the same interface.
+
+        //val matrix1 = storeFactory.makeEye(tokens1Size.toLong(), EMBEDDING_SIZE.toLong())
+        val matrix1 = storeFactory.make(tokens1.size.toLong(), EMBEDDING_SIZE.toLong())
+
+        for (i in 0 until tokens1.size) {
             val id = getIdOrUnk(tokens1[i], vocab)
             val idTensor = ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env)
             val inputs = mapOf("id" to idTensor)
             embeddings.run(inputs).use { results ->
                 val embedding = results[0] as OnnxTensor
-                for(j in 0 until EMBEDDING_SIZE) {
-                    array1[i, j] = embedding.floatBuffer[j].toDouble()
+                for (j in 0 until EMBEDDING_SIZE) {
+                    matrix1.set(i.toLong(), j.toLong(), embedding.floatBuffer[j].toDouble())
                 }
             }
             idTensor?.close()
         }
-        val array2 = F64Array(tokens2.size, EMBEDDING_SIZE)
+        val norm1 = matrix1.multiply(matrix1.transpose()).operateOnAll(modifier).sliceDiagonal()
+        val norm1Array = Primitive64Array.FACTORY.copy(norm1)
+        norm1Array.modifyAll(PrimitiveMath.INVERT)
+        val norm1Matrix = storeFactory.makeEye(tokens1.size.toLong(), tokens1.size.toLong())
+        norm1Matrix.fillDiagonal(norm1Array)
+        val matrix2 = storeFactory.make(tokens2.size.toLong(), EMBEDDING_SIZE.toLong())
         for (i in 0 until tokens2.size) {
             val id = getIdOrUnk(tokens2[i], vocab)
             val idTensor = ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env)
             val inputs = mapOf("id" to idTensor)
-            embeddings.run(inputs).use {
-                results ->
+            embeddings.run(inputs).use { results ->
                 val embedding = results[0] as OnnxTensor
-                for(j in 0 until EMBEDDING_SIZE) {
-                    array2[i, j] = embedding.floatBuffer[j].toDouble()
+                for (j in 0 until EMBEDDING_SIZE) {
+                    matrix2.set(i.toLong(), j.toLong(), embedding.floatBuffer[j].toDouble())
                 }
             }
             idTensor?.close()
         }
-        val cosSimArray = F64Array(tokens1.size, tokens2.size)
-        for(i in 0 until tokens1.size) {
-            for(j in 0 until tokens2.size) {
-                val dot = array1.V[i].dot(array2.V[j])
-                val norm1 = array1.V[i].dot(array1.V[i]).pow(0.5)
-                val norm2 = array2.V[j].dot(array2.V[j]).pow(0.5)
-                cosSimArray[i, j] = try {
-                    dot / (norm1 * norm2)
-                } catch (e: ArithmeticException) {
-                    0.0
-                }
-            }
-        }
+        val norm2 = matrix2.multiply(matrix2.transpose()).operateOnAll(modifier).sliceDiagonal()
+        val norm2Array = Primitive64Array.FACTORY.copy(norm2)
+        norm2Array.modifyAll(PrimitiveMath.INVERT)
+        val norm2Matrix = storeFactory.makeEye(tokens2.size.toLong(), tokens2.size.toLong())
+        norm2Matrix.fillDiagonal(norm2Array)
+        val cosSimArray = norm1Matrix.multiply(matrix1.multiply(matrix2.transpose())).multiply(norm2Matrix)
 
         // Liu2018 similarity definition
         val simS1S2 = (0 until tokens1.size).sumOf {
             i ->
             (0 until tokens2.size).maxOf {
                 j ->
-                cosSimArray[i, j]
+                cosSimArray.get(i.toLong(), j.toLong())
             }
         } / tokens1.size
         val simS2S1 = (0 until tokens2.size).sumOf {
                 j ->
             (0 until tokens1.size).maxOf {
                     i ->
-                cosSimArray[i, j]
+                cosSimArray.get(i.toLong(), j.toLong())
             }
         } / tokens2.size
 

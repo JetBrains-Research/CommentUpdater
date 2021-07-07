@@ -28,6 +28,7 @@ dependencies {
     implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
     implementation 'org.jetbrains.bio:viktor:1.1.0'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0"
+    implementation "org.ojalgo:ojalgo:48.4.0"
 
     testImplementation 'com.jetbrains.intellij.platform:vcs-test-framework:201.7846.76'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
