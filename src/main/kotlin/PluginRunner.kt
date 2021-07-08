@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
+import org.eclipse.jgit.lib.Repository
 import org.jetbrains.annotations.Nullable
 import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
@@ -66,10 +67,6 @@ class PluginRunner : ApplicationStarter {
     val outputFile = File(OUTPUT_PATH)
     val outputWriter = FileWriter(outputFile, true)
 
-    // Refactoring Miner
-    var gitService: GitService = GitServiceImpl()
-    var refactoringMiner: GitHistoryRefactoringMiner = GitHistoryRefactoringMinerImpl()
-
     // Metric model
     val metricsModel = MetricsCalculator()
 
@@ -87,7 +84,7 @@ class PluginRunner : ApplicationStarter {
 
 
         // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/RxJava"
+        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/guava"
 
         onStart()
 
@@ -125,7 +122,12 @@ class PluginRunner : ApplicationStarter {
 
 
     fun inspectProject(projectPath: String) {
-        val project = ProjectUtil.openOrImport(projectPath, null, true) ?: return
+        val project = ProjectUtil.openOrImport(projectPath, null, true)
+        if( project == null) {
+            log(LogLevel.WARN, "Can't open project $projectPath")
+            onFinish()
+            return
+        }
         val projectPsiFiles = mutableListOf<PsiFile>()
         ProjectRootManager.getInstance(project).contentRoots.mapNotNull { root ->
             VfsUtilCore.iterateChildrenRecursively(root, null) { virtualFile ->
@@ -138,7 +140,6 @@ class PluginRunner : ApplicationStarter {
             }
         }
 
-
         val vcsManager = ServiceManager.getService(
             project,
             ProjectLevelVcsManager::class.java
@@ -149,27 +150,30 @@ class PluginRunner : ApplicationStarter {
             GitRepositoryManager::class.java
         )
 
-
         // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
         // To understand why we should call addInitializationRequest
 
         vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
             try {
+
                 val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
                     runBlocking {
                         walkRepo(repo).map { commit ->
+
                             async(Dispatchers.Default) {
-                                getChanges(commit, ".java").forEach { change ->
-                                    try {
+                                try {
+                                    getChanges(commit, ".java").forEach { change ->
                                         processChange(change, commit, project)
-                                    } catch (e: Exception) {
-                                        log(LogLevel.WARN, "Error occurred during processing ${commit.id}", logThread = true)
-                                        e.printStackTrace()
                                     }
+                                    processedCommits.incrementAndGet()
+                                } catch (e: Exception) {
+                                    // In case of exception inside commit processing, just continue working and log exception
+                                    // We don't want to fall because of strange mistake on single commit
+                                    log(LogLevel.ERROR, "Error during commit ${commit.id.toShortString()} processing", logThread = true)
+                                    e.printStackTrace()
                                 }
-                                processedCommits.incrementAndGet()
                             }
                         }.awaitAll()
                     }
@@ -185,6 +189,7 @@ class PluginRunner : ApplicationStarter {
         }
     }
 
+
     fun processChange(
         change: Change,
         commit: GitCommit,
@@ -197,10 +202,13 @@ class PluginRunner : ApplicationStarter {
         val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
 
+
+
         val changedMethods = try {
             extractChangedMethods(project, change, refactorings)
         } catch (e: VcsException) {
-            log(LogLevel.WARN, "Unexpected VCS exception: ${e.stackTrace}", logThread = true)
+            log(LogLevel.WARN, "Unexpected VCS exception", logThread = true)
+            e.printStackTrace()
             null
         }
 
@@ -223,7 +231,7 @@ class PluginRunner : ApplicationStarter {
                     newComment = newMethod.docComment?.text ?: ""
                 }
 
-                if (oldCode.trim() == newCode.trim()) {
+                if (oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()) {
                     continue
                 }
 
@@ -233,7 +241,7 @@ class PluginRunner : ApplicationStarter {
                 )
 
                 val metric =
-                    metricsModel.calculateMetrics(oldCode, newCode, newComment, methodRefactorings)
+                    metricsModel.calculateMetrics(oldCode, newCode, oldComment, newComment, methodRefactorings)
                         ?: continue
 
                 saveMetric(

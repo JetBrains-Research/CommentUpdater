@@ -39,7 +39,7 @@ class MetricsCalculator {
 
     val simModel: SimilarityModel = SimilarityModel()
 
-    fun calculateMetrics(oldCode: String, newCode: String, comment: String,
+    fun calculateMetrics(oldCode: String, newCode: String, oldComment: String, newComment: String,
     methodRefactorings: MutableList<Refactoring> = mutableListOf()): MethodMetric? {
 
         var isRenamed = false
@@ -81,18 +81,24 @@ class MetricsCalculator {
         val oldCodeLen = oldSubTokens.size
         val newCodeLen = newSubTokens.size
 
-        val commentSubTokens = CodeCommentTokenizer.subTokenizeComment(comment).filter(filterSubTokens)
+        val commentSubTokens = CodeCommentTokenizer.subTokenizeComment(newComment).filter(filterSubTokens)
+
+        val oldCommentSubTokens = CodeCommentTokenizer.subTokenizeComment(oldComment).filter(filterSubTokens)
 
         val commentLen = commentSubTokens.size
 
         val (spans, diffTokens, diffCommands) = CodeCommentDiffs.computeCodeDiffs(oldSubTokens, newSubTokens)
 
+        val commentSpans = CodeCommentDiffs.computeMinimalCommentDiffs(oldCommentSubTokens, commentSubTokens)
+
         val changedCodeLen = diffCommands.count {
             it != CodeCommentDiffs.KEEP
         }
 
-        // methods with equal bodies aren't interesting
-        if (changedCodeLen == 0) {
+        val changeCommentLen = commentSpans.size
+
+        // If code and comment are unchanged, we aren't interested
+        if (changedCodeLen == 0 && changeCommentLen == 0) {
             return null
         }
 
