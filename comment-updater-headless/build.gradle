@@ -1,6 +1,31 @@
 group = rootProject.group
 version = rootProject.version
 
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    version = '2021.1'
+    plugins 'git4idea', 'java'
+}
+
+dependencies {
+
+    implementation(project(":comment-updater-core"))
+
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "io.github.java-diff-utils:java-diff-utils:4.9"
+
+    implementation "io.kinference:inference:0.1.2"
+    implementation "com.microsoft.onnxruntime:onnxruntime:1.8.0"
+    implementation 'com.beust:klaxon:5.5'
+    implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
+    implementation 'org.jetbrains.bio:viktor:1.1.0'
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0"
+    implementation "org.ojalgo:ojalgo:48.4.0"
+}
+
+
+
 tasks.runIde {
     runIde.args "CommentUpdater"
     runIde.jvmArgs "-Djava.awt.headless=true"
