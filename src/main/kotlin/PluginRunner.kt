@@ -4,14 +4,12 @@ import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.components.ServiceManager
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.impl.ProjectLevelVcsManagerImpl
-import com.intellij.openapi.vcs.impl.VcsInitObject
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
@@ -28,7 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
-import org.eclipse.jgit.lib.Repository
 import org.jetbrains.annotations.Nullable
 import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
@@ -36,10 +33,9 @@ import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import org.refactoringminer.api.*
-import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
-import org.refactoringminer.util.GitServiceImpl
 import java.io.File
 import java.io.FileWriter
+import java.io.Writer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -62,51 +58,76 @@ data class DatasetExample(
 class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
+    // Reading project paths
+    val inputPath = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/input.txt"
 
     // Saving data
-    val OUTPUT_PATH = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/dataset_test.json"
+    val OUTPUT_DIR_PATH = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/dataset"
     val gson = Gson()
-    val outputFile = File(OUTPUT_PATH)
-    val outputWriter = FileWriter(outputFile, true)
 
     // Metric model
     val metricsModel = MetricsCalculator()
 
     // Internal counters
-    var foundSamples = AtomicInteger(0)
+    var foundExamples = AtomicInteger(0)
     var processedCommits = AtomicInteger(0)
     var processedMethods = AtomicInteger(0)
     var processedFileChanges = AtomicInteger(0)
-
-    private val LOG: Logger = Logger.getInstance("#org.jetbrains.research.commentupdater.PluginRunner")
+    var totalExamplesNumber = AtomicInteger(0)
 
     override fun main(args: Array<out String>) {
 
         log(LogLevel.INFO, "Starting Application")
 
+        val inputFile = File(inputPath)
 
-        // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/exampleproject"
+        val projectPaths = inputFile.readLines()
 
-
-        val projectPaths = listOf(projectPath, "/Users/Ivan.Pavlov/IdeaProjects/simpledimpl")
-
+        numberOfProjects = projectPaths.size
 
         thread (start = true){
-            projectPaths.forEach {
+            projectPaths.forEachIndexed {
+                index, projectPath ->
+                val projectName = projectPath.split('/').last()
 
-                onStart()
-                inspectProject(it)
+                val projectFile = File(OUTPUT_DIR_PATH).resolve("${projectName}.json")
+                val projectWriter = FileWriter(projectFile, true)
+
+                projectTag = projectName
+                currentProject = index + 1
+
+                onStart(projectFile)
+
+                collectProjectExamples(projectPath, projectWriter)
+
+                onFinish(projectWriter)
+
             }
 
+            projectTag = ""
+            log(LogLevel.INFO, "Finished with ${totalExamplesNumber.get()} examples found.")
             exitProcess(0)
         }
     }
 
 
-    private fun onStart() {
-        //start json list
+    private fun onStart(outputFile: File) {
+        log(LogLevel.INFO, "Open project")
         outputFile.writeText("[")
+    }
+
+    private fun onFinish(outputWriter: Writer) {
+        log(LogLevel.INFO, "Close project. Found ${foundExamples.get()} examples," +
+                " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
+                " file changes ${processedFileChanges.get()}")
+        outputWriter.write("]")
+        outputWriter.close()
+
+        totalExamplesNumber.addAndGet(foundExamples.get())
+        foundExamples.set(0)
+        processedCommits.set(0)
+        processedMethods.set(0)
+        processedFileChanges.set(0)
     }
 
     companion object {
@@ -114,9 +135,13 @@ class PluginRunner : ApplicationStarter {
             INFO, WARN, ERROR
         }
 
+        var projectTag: String = ""
+        var currentProject: Int = 0
+        var numberOfProjects = 0
+
         fun  log(level: LogLevel, message: String, logThread: Boolean = false,
                  applicationTag: String = "[HeadlessCommentUpdater]") {
-            val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag $message"
+            val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $currentProject/$numberOfProjects] $message"
 
             when (level) {
                 LogLevel.INFO -> {
@@ -133,13 +158,12 @@ class PluginRunner : ApplicationStarter {
     }
 
 
-    fun inspectProject(projectPath: String) {
+    fun collectProjectExamples(projectPath: String, projectWriter: Writer) {
 
         val latch = CountDownLatch(1)
         val project = ProjectUtil.openOrImport(projectPath, null, true)
         if( project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
-            onFinish()
             return
         }
         val projectPsiFiles = mutableListOf<PsiFile>()
@@ -176,12 +200,18 @@ class PluginRunner : ApplicationStarter {
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
                     runBlocking {
-                        walkRepo(repo).map { commit ->
+                        val commits = walkRepo(repo)
+                        val numOfCommits = commits.size
+
+                        commits.map { commit ->
 
                             async(Dispatchers.Default) {
                                 try {
                                     getChanges(commit, ".java").forEach { change ->
-                                        processChange(change, commit, project)
+                                        val fileName = change.afterRevision?.file?.name ?: ""
+                                        log(LogLevel.INFO, "Commit: ${commit.id.toShortString()} num ~ ${processedCommits.get()}/$numOfCommits File changed: $fileName", logThread = true)
+
+                                        collectChange(change, commit, project, projectWriter)
                                     }
                                     processedCommits.incrementAndGet()
                                 } catch (e: Exception) {
@@ -200,7 +230,6 @@ class PluginRunner : ApplicationStarter {
                 e.printStackTrace()
             }
             finally {
-                onFinish()
                 latch.countDown()
             }
         }
@@ -210,14 +239,14 @@ class PluginRunner : ApplicationStarter {
     }
 
 
-    fun processChange(
+    fun collectChange(
         change: Change,
         commit: GitCommit,
-        project: @Nullable Project) {
+        project: @Nullable Project,
+        projectWriter: Writer) {
+
         processedFileChanges.incrementAndGet()
         val fileName = change.afterRevision?.file?.name ?: ""
-
-        log(LogLevel.INFO, "Commit: ${commit.id.toShortString()} num ~ ${processedCommits.get()} File changed: $fileName", logThread = true)
 
         val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
@@ -265,6 +294,7 @@ class PluginRunner : ApplicationStarter {
                         ?: continue
 
                 saveMetric(
+                    projectWriter,
                     commitId = commit.id.toString(),
                     fileName = fileName,
                     oldCode = oldCode,
@@ -281,20 +311,12 @@ class PluginRunner : ApplicationStarter {
         }
     }
 
-    fun onFinish() {
-        log(LogLevel.INFO, "Found ${foundSamples} examples," +
-                " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
-                " file changes ${processedFileChanges.get()}", logThread = true)
-        outputWriter.write("]")
-        //outputWriter.close()
-    }
-
-    fun saveMetric(
+    fun saveMetric(projectWriter: Writer,
         commitId: String, commitTime: String, fileName: String, oldCode: String, newCode: String,
         oldComment: String, newComment: String, oldMethodName: String, newMethodName: String,
         metric: MethodMetric
     ) {
-        foundSamples.incrementAndGet()
+        foundExamples.incrementAndGet()
         val datasetExample = DatasetExample(
             oldCode = oldCode,
             newCode = newCode,
@@ -309,8 +331,8 @@ class PluginRunner : ApplicationStarter {
         )
 
         val jsonExample = gson.toJson(datasetExample)
-        outputWriter.write(jsonExample)
-        outputWriter.write(",")
+        projectWriter.write(jsonExample)
+        projectWriter.write(",")
     }
 
     /**
