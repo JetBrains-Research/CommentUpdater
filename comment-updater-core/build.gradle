@@ -1,16 +1,2 @@
-
-
 group = rootProject.group
 version = rootProject.version
-
-
-
-
-
-
-tasks.runIde {
-    runIde.args "CommentUpdater"
-    runIde.jvmArgs "-Djava.awt.headless=true"
-    maxHeapSize = "20g"
-}
-

@@ -4,4 +4,3 @@ include (
         'comment-updater-plugin',
         'comment-updater-headless'
 )
-

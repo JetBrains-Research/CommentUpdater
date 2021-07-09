@@ -1,10 +1,5 @@
-
-
 group = rootProject.group
 version = rootProject.version
-
-
-
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
@@ -12,15 +7,8 @@ intellij {
     plugins 'git4idea', 'java'
 }
 
-
-
-
-
-
-
 tasks.runIde {
     runIde.args "CommentUpdater"
     runIde.jvmArgs "-Djava.awt.headless=true"
     maxHeapSize = "20g"
 }
-
