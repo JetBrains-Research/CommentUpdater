@@ -40,7 +40,9 @@ import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
 import org.refactoringminer.util.GitServiceImpl
 import java.io.File
 import java.io.FileWriter
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 
@@ -84,11 +86,21 @@ class PluginRunner : ApplicationStarter {
 
 
         // path to cloned project: https://github.com/google/guava.git
-        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/guava"
+        val projectPath = "/Users/Ivan.Pavlov/DatasetProjects/exampleproject"
 
-        onStart()
 
-        inspectProject(projectPath)
+        val projectPaths = listOf(projectPath, "/Users/Ivan.Pavlov/IdeaProjects/simpledimpl")
+
+
+        thread (start = true){
+            projectPaths.forEach {
+
+                onStart()
+                inspectProject(it)
+            }
+
+            exitProcess(0)
+        }
     }
 
 
@@ -122,6 +134,8 @@ class PluginRunner : ApplicationStarter {
 
 
     fun inspectProject(projectPath: String) {
+
+        val latch = CountDownLatch(1)
         val project = ProjectUtil.openOrImport(projectPath, null, true)
         if( project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
@@ -129,14 +143,17 @@ class PluginRunner : ApplicationStarter {
             return
         }
         val projectPsiFiles = mutableListOf<PsiFile>()
-        ProjectRootManager.getInstance(project).contentRoots.mapNotNull { root ->
-            VfsUtilCore.iterateChildrenRecursively(root, null) { virtualFile ->
-                if (virtualFile.extension != "java" || virtualFile.canonicalPath == null) {
-                    return@iterateChildrenRecursively true
+
+        ApplicationManager.getApplication().runReadAction {
+            ProjectRootManager.getInstance(project).contentRoots.mapNotNull { root ->
+                VfsUtilCore.iterateChildrenRecursively(root, null) { virtualFile ->
+                    if (virtualFile.extension != "java" || virtualFile.canonicalPath == null) {
+                        return@iterateChildrenRecursively true
+                    }
+                    val psi =
+                        PsiManager.getInstance(project).findFile(virtualFile) ?: return@iterateChildrenRecursively true
+                    projectPsiFiles.add(psi)
                 }
-                val psi =
-                    PsiManager.getInstance(project).findFile(virtualFile) ?: return@iterateChildrenRecursively true
-                projectPsiFiles.add(psi)
             }
         }
 
@@ -153,9 +170,8 @@ class PluginRunner : ApplicationStarter {
         // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
         // To understand why we should call addInitializationRequest
 
-        vcsManager.addInitializationRequest(VcsInitObject.AFTER_COMMON) {
+        val runnable = {
             try {
-
                 val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
@@ -185,8 +201,12 @@ class PluginRunner : ApplicationStarter {
             }
             finally {
                 onFinish()
+                latch.countDown()
             }
         }
+
+        vcsManager.runAfterInitialization(runnable)
+        latch.await()
     }
 
 
@@ -266,8 +286,7 @@ class PluginRunner : ApplicationStarter {
                 " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
                 " file changes ${processedFileChanges.get()}", logThread = true)
         outputWriter.write("]")
-        outputWriter.close()
-        exitProcess(0)
+        //outputWriter.close()
     }
 
     fun saveMetric(
