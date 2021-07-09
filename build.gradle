@@ -31,9 +31,7 @@ allprojects{
     dependencies {
 
         implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-
         implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
-        implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0"
     }
 
     intellij {
