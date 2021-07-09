@@ -12,11 +12,6 @@ dependencies {
     implementation(project(":comment-updater-core"))
 }
 
-tasks.runIde {
-    runIde.args "CommentUpdater"
-    runIde.jvmArgs "-Djava.awt.headless=true"
-    maxHeapSize = "20g"
-}
 dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
