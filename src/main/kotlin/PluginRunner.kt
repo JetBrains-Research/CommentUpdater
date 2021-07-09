@@ -85,6 +85,9 @@ class PluginRunner : ApplicationStarter {
 
         numberOfProjects = projectPaths.size
 
+
+        // You want to launch your processing work in different thread,
+        // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
         thread (start = true){
             projectPaths.forEachIndexed {
                 index, projectPath ->
@@ -111,12 +114,12 @@ class PluginRunner : ApplicationStarter {
     }
 
 
-    private fun onStart(outputFile: File) {
+    fun onStart(outputFile: File) {
         log(LogLevel.INFO, "Open project")
         outputFile.writeText("[")
     }
 
-    private fun onFinish(outputWriter: Writer) {
+    fun onFinish(outputWriter: Writer) {
         log(LogLevel.INFO, "Close project. Found ${foundExamples.get()} examples," +
                 " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
                 " file changes ${processedFileChanges.get()}")
@@ -159,8 +162,8 @@ class PluginRunner : ApplicationStarter {
 
 
     fun collectProjectExamples(projectPath: String, projectWriter: Writer) {
-
         val latch = CountDownLatch(1)
+
         val project = ProjectUtil.openOrImport(projectPath, null, true)
         if( project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
@@ -192,7 +195,7 @@ class PluginRunner : ApplicationStarter {
         )
 
         // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
-        // To understand why we should call addInitializationRequest
+        // To understand why we should call runAfterInitialization and create this runnable
 
         val runnable = {
             try {
@@ -244,14 +247,12 @@ class PluginRunner : ApplicationStarter {
         commit: GitCommit,
         project: @Nullable Project,
         projectWriter: Writer) {
-
         processedFileChanges.incrementAndGet()
+
         val fileName = change.afterRevision?.file?.name ?: ""
 
         val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
-
-
 
         val changedMethods = try {
             extractChangedMethods(project, change, refactorings)
@@ -421,7 +422,7 @@ class PluginRunner : ApplicationStarter {
                 it.docComment != null
             }
 
-            namesToMethods = hashMapOf<String, PsiMethod>(*methods.map {
+            namesToMethods = hashMapOf(*methods.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }.toTypedArray())
         }
