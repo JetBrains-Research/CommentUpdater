@@ -9,15 +9,7 @@ plugins {
 group = "org.jetbrains.research.commentupdater"
 version = "1.0"
 
-repositories {
-    mavenCentral()
-    jcenter()
-    maven { url "https://www.jetbrains.com/intellij-repository/releases" }
-    maven { url "https://www.jetbrains.com/intellij-repository/snapshots" }
-    maven { url "https://jetbrains.bintray.com/intellij-third-party-dependencies" }
-    maven { url "https://www.myget.org/F/rd-snapshots/maven/" } // Required for VCSTesting
-    maven { url "$projectDir/libs" }
-}
+
 
 allprojects{
     apply {
@@ -25,7 +17,22 @@ allprojects{
         plugin 'org.jetbrains.intellij'
         plugin "org.jetbrains.kotlin.jvm"
     }
+    repositories {
+        mavenCentral()
+        jcenter()
+        maven { url "https://www.jetbrains.com/intellij-repository/releases" }
+        maven { url "https://www.jetbrains.com/intellij-repository/snapshots" }
+        maven { url "https://jetbrains.bintray.com/intellij-third-party-dependencies" }
+        maven { url "https://www.myget.org/F/rd-snapshots/maven/" } // Required for VCSTesting
+        maven { url "$projectDir/libs" }
+    }
 
+    compileKotlin {
+        kotlinOptions.jvmTarget = "1.8"
+    }
+    compileTestKotlin {
+        kotlinOptions.jvmTarget = "1.8"
+    }
 }
 
 dependencies {
@@ -46,26 +53,5 @@ dependencies {
     implementation "org.ojalgo:ojalgo:48.4.0"
 }
 
-// See https://github.com/JetBrains/gradle-intellij-plugin/
-intellij {
-    version = '2021.1'
-    plugins 'git4idea', 'java'
-}
 
-compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
-}
-compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
-}
-
-
-
-
-
-tasks.runIde {
-    runIde.args "CommentUpdater"
-    runIde.jvmArgs "-Djava.awt.headless=true"
-    maxHeapSize = "20g"
-}
 
