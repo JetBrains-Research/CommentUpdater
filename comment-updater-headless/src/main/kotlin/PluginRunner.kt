@@ -1,4 +1,3 @@
-import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
@@ -8,10 +7,6 @@ import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.impl.ProjectLevelVcsManagerImpl
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiFileFactory
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.util.PsiTreeUtil
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.repo.GitRepositoryManager
@@ -23,7 +18,6 @@ import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import org.refactoringminer.api.*
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
@@ -41,14 +35,14 @@ class PluginRunner: ApplicationStarter {
 class CodeCommentExtractor {
 
     // Reading project paths
-    val inputPath = HeadlessConfig.INPUT_FILE
+    private val inputPath = HeadlessConfig.INPUT_FILE
 
-    val exampleWriter = ExampleWriter()
+    private val exampleWriter = ExampleWriter()
 
-    val statsHandler = StatisticHandler()
+    private val statsHandler = StatisticHandler()
 
     // Metric model
-    val metricsModel = MetricsCalculator()
+    private val metricsModel = MetricsCalculator()
 
 
     companion object {
@@ -111,19 +105,19 @@ class CodeCommentExtractor {
     }
 
 
-    fun onStart() {
+    private fun onStart() {
         log(LogLevel.INFO, "Open project")
         exampleWriter.open()
     }
 
-    fun onFinish() {
+    private fun onFinish() {
         log(LogLevel.INFO, "Close project. ${statsHandler.report()}")
         exampleWriter.close()
         statsHandler.refresh()
     }
 
 
-    fun collectProjectExamples(projectPath: String) {
+    private fun collectProjectExamples(projectPath: String) {
         val project = ProjectUtil.openOrImport(projectPath, null, true)
         if( project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
@@ -175,7 +169,7 @@ class CodeCommentExtractor {
     }
 
 
-    fun processCommit(
+    private fun processCommit(
         commit: GitCommit,
         project: Project
     ) {
@@ -201,7 +195,7 @@ class CodeCommentExtractor {
     }
 
 
-    fun collectChange(
+    private fun collectChange(
         change: Change,
         commit: GitCommit,
         project: Project) {
