@@ -1,4 +1,3 @@
-import com.google.gson.Gson
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
@@ -18,120 +17,43 @@ import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
 import git4idea.GitCommit
 import git4idea.GitVcs
-import git4idea.history.GitHistoryUtils
-import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryManager
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.annotations.Nullable
-import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import org.refactoringminer.api.*
 import java.io.File
-import java.io.FileWriter
-import java.io.Writer
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 
-data class DatasetExample(
-    val oldCode: String,
-    val newCode: String,
-    val oldComment: String,
-    val newComment: String,
-    val oldMethodName: String,
-    val newMethodName: String,
-    val commitId: String,
-    val commitTime: String,
-    val fileName: String,
-    val metric: MethodMetric
-)
-
-class PluginRunner : ApplicationStarter {
+class PluginRunner: ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
+    override fun main(args: Array<String>) {
+        CodeCommentExtractor().main(args)
+    }
+}
+
+
+class CodeCommentExtractor {
 
     // Reading project paths
-    val inputPath = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/input.txt"
+    val inputPath = HeadlessConfig.INPUT_FILE
 
-    // Saving data
-    val OUTPUT_DIR_PATH = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/dataset"
-    val gson = Gson()
+    val exampleWriter = ExampleWriter()
+
+    val statsHandler = StatisticHandler()
 
     // Metric model
     val metricsModel = MetricsCalculator()
 
-    // Internal counters
-    var foundExamples = AtomicInteger(0)
-    var processedCommits = AtomicInteger(0)
-    var processedMethods = AtomicInteger(0)
-    var processedFileChanges = AtomicInteger(0)
-    var totalExamplesNumber = AtomicInteger(0)
-
-    override fun main(args: Array<out String>) {
-
-        log(LogLevel.INFO, "Starting Application")
-
-        val inputFile = File(inputPath)
-
-        val projectPaths = inputFile.readLines()
-
-        numberOfProjects = projectPaths.size
-
-
-        // You want to launch your processing work in different thread,
-        // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
-        thread (start = true){
-            projectPaths.forEachIndexed {
-                index, projectPath ->
-                val projectName = projectPath.split('/').last()
-
-                val projectFile = File(OUTPUT_DIR_PATH).resolve("${projectName}.json")
-                val projectWriter = FileWriter(projectFile, true)
-
-                projectTag = projectName
-                currentProject = index + 1
-
-                onStart(projectFile)
-
-                collectProjectExamples(projectPath, projectWriter)
-
-                onFinish(projectWriter)
-
-            }
-
-            projectTag = ""
-            log(LogLevel.INFO, "Finished with ${totalExamplesNumber.get()} examples found.")
-            exitProcess(0)
-        }
-    }
-
-
-    fun onStart(outputFile: File) {
-        log(LogLevel.INFO, "Open project")
-        outputFile.writeText("[")
-    }
-
-    fun onFinish(outputWriter: Writer) {
-        log(LogLevel.INFO, "Close project. Found ${foundExamples.get()} examples," +
-                " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
-                " file changes ${processedFileChanges.get()}")
-        outputWriter.write("]")
-        outputWriter.close()
-
-        totalExamplesNumber.addAndGet(foundExamples.get())
-        foundExamples.set(0)
-        processedCommits.set(0)
-        processedMethods.set(0)
-        processedFileChanges.set(0)
-    }
 
     companion object {
         enum class LogLevel {
@@ -139,12 +61,11 @@ class PluginRunner : ApplicationStarter {
         }
 
         var projectTag: String = ""
-        var currentProject: Int = 0
-        var numberOfProjects = 0
+        var projectProcess: String = ""
 
         fun  log(level: LogLevel, message: String, logThread: Boolean = false,
                  applicationTag: String = "[HeadlessCommentUpdater]") {
-            val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $currentProject/$numberOfProjects] $message"
+            val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $projectProcess] $message"
 
             when (level) {
                 LogLevel.INFO -> {
@@ -161,7 +82,52 @@ class PluginRunner : ApplicationStarter {
     }
 
 
-    fun collectProjectExamples(projectPath: String, projectWriter: Writer) {
+    fun main(args: Array<out String>) {
+
+        log(LogLevel.INFO, "Starting Application")
+
+        val inputFile = File(inputPath)
+
+        val projectPaths = inputFile.readLines()
+
+
+        // You want to launch your processing work in different thread,
+        // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
+        thread (start = true){
+            projectPaths.forEachIndexed {
+                index, projectPath ->
+
+                exampleWriter.setProjectFile(projectPath)
+                projectTag = exampleWriter.projectName
+                projectProcess = "${index + 1}/${projectPaths.size}"
+
+                onStart()
+
+                collectProjectExamples(projectPath)
+
+                onFinish()
+            }
+
+            projectTag = ""
+            log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
+            exitProcess(0)
+        }
+    }
+
+
+    fun onStart() {
+        log(LogLevel.INFO, "Open project")
+        exampleWriter.open()
+    }
+
+    fun onFinish() {
+        log(LogLevel.INFO, "Close project. ${statsHandler.report()}")
+        exampleWriter.close()
+        statsHandler.refresh()
+    }
+
+
+    fun collectProjectExamples(projectPath: String) {
         val latch = CountDownLatch(1)
 
         val project = ProjectUtil.openOrImport(projectPath, null, true)
@@ -203,26 +169,12 @@ class PluginRunner : ApplicationStarter {
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
                     runBlocking {
-                        val commits = walkRepo(repo)
+                        val commits = repo.walkAll()
                         val numOfCommits = commits.size
 
                         commits.map { commit ->
-
                             async(Dispatchers.Default) {
-                                try {
-                                    getChanges(commit, ".java").forEach { change ->
-                                        val fileName = change.afterRevision?.file?.name ?: ""
-                                        log(LogLevel.INFO, "Commit: ${commit.id.toShortString()} num ~ ${processedCommits.get()}/$numOfCommits File changed: $fileName", logThread = true)
-
-                                        collectChange(change, commit, project, projectWriter)
-                                    }
-                                    processedCommits.incrementAndGet()
-                                } catch (e: Exception) {
-                                    // In case of exception inside commit processing, just continue working and log exception
-                                    // We don't want to fall because of strange mistake on single commit
-                                    log(LogLevel.ERROR, "Error during commit ${commit.id.toShortString()} processing", logThread = true)
-                                    e.printStackTrace()
-                                }
+                                processCommit(commit, numOfCommits, project)
                             }
                         }.awaitAll()
                     }
@@ -241,13 +193,38 @@ class PluginRunner : ApplicationStarter {
         latch.await()
     }
 
+    fun processCommit(
+        commit: GitCommit,
+        numOfCommits: Int,
+        project: Project
+    ) {
+        try {
+            getChanges(commit, ".java").forEach { change ->
+                val fileName = change.afterRevision?.file?.name ?: ""
+                log(
+                    LogLevel.INFO,
+                    "Commit: ${commit.id.toShortString()} num ~ ${statsHandler.processedCommits.get()}" +
+                            "/$numOfCommits File changed: $fileName",
+                    logThread = true
+                )
+
+                collectChange(change, commit, project)
+            }
+            statsHandler.processedCommits.incrementAndGet()
+        } catch (e: Exception) {
+            // In case of exception inside commit processing, just continue working and log exception
+            // We don't want to fall because of strange mistake on single commit
+            log(LogLevel.ERROR, "Error during commit ${commit.id.toShortString()} processing", logThread = true)
+            e.printStackTrace()
+        }
+    }
+
 
     fun collectChange(
         change: Change,
         commit: GitCommit,
-        project: @Nullable Project,
-        projectWriter: Writer) {
-        processedFileChanges.incrementAndGet()
+        project: Project) {
+        statsHandler.processedFileChanges.incrementAndGet()
 
         val fileName = change.afterRevision?.file?.name ?: ""
 
@@ -264,7 +241,7 @@ class PluginRunner : ApplicationStarter {
 
         changedMethods?.let {
             for ((oldMethod, newMethod) in it) {
-                processedMethods.incrementAndGet()
+                statsHandler.processedMethods.incrementAndGet()
                 lateinit var newMethodName: String
                 lateinit var oldMethodName: String
                 lateinit var oldCode: String
@@ -294,47 +271,29 @@ class PluginRunner : ApplicationStarter {
                     metricsModel.calculateMetrics(oldCode, newCode, oldComment, newComment, methodRefactorings)
                         ?: continue
 
-                saveMetric(
-                    projectWriter,
-                    commitId = commit.id.toString(),
-                    fileName = fileName,
+
+                statsHandler.foundExamples.incrementAndGet()
+
+
+                val datasetExample = DatasetExample(
                     oldCode = oldCode,
                     newCode = newCode,
                     oldComment = oldComment,
                     newComment = newComment,
+                    commitId = commit.id.toString(),
+                    fileName = fileName,
                     metric = metric,
+                    commitTime = commit.timestamp.toString(),
                     oldMethodName = oldMethodName,
-                    newMethodName = newMethodName,
-                    commitTime = commit.timestamp.toString()
+                    newMethodName = newMethodName
                 )
+                exampleWriter.saveMetric(datasetExample)
 
             }
         }
     }
 
-    fun saveMetric(projectWriter: Writer,
-        commitId: String, commitTime: String, fileName: String, oldCode: String, newCode: String,
-        oldComment: String, newComment: String, oldMethodName: String, newMethodName: String,
-        metric: MethodMetric
-    ) {
-        foundExamples.incrementAndGet()
-        val datasetExample = DatasetExample(
-            oldCode = oldCode,
-            newCode = newCode,
-            oldComment = oldComment,
-            newComment = newComment,
-            commitId = commitId,
-            fileName = fileName,
-            metric = metric,
-            commitTime = commitTime,
-            oldMethodName = oldMethodName,
-            newMethodName = newMethodName
-        )
 
-        val jsonExample = gson.toJson(datasetExample)
-        projectWriter.write(jsonExample)
-        projectWriter.write(",")
-    }
 
     /**
      * @return: Map from old method name to new method name
@@ -443,9 +402,7 @@ class PluginRunner : ApplicationStarter {
             }
     }
 
-    fun walkRepo(repo: GitRepository): List<GitCommit> {
-        return GitHistoryUtils.history(repo.project, repo.root, "--all")
-    }
+
 }
 
 
