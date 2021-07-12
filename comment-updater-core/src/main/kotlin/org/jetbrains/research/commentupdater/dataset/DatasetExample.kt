@@ -1,3 +1,5 @@
+package org.jetbrains.research.commentupdater.dataset
+
 import org.jetbrains.research.commentupdater.models.MethodMetric
 
 data class DatasetExample(

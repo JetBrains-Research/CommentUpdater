@@ -1,3 +1,5 @@
+package org.jetbrains.research.commentupdater.utils
+
 import gr.uom.java.xmi.diff.RenameOperationRefactoring
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType

@@ -1,4 +1,5 @@
 import com.google.gson.Gson
+import org.jetbrains.research.commentupdater.dataset.DatasetExample
 import java.io.File
 import java.io.FileWriter
 import java.io.Writer

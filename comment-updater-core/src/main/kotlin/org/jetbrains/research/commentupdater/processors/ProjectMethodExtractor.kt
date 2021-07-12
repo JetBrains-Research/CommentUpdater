@@ -1,3 +1,5 @@
+package org.jetbrains.research.commentupdater.processors
+
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
@@ -6,6 +8,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.research.commentupdater.utils.RefactoringUtils
 import org.refactoringminer.api.Refactoring
 
 object ProjectMethodExtractor {
