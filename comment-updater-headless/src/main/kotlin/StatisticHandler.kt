@@ -10,6 +10,7 @@ class StatisticHandler {
 
     // Global launch counters
     var totalExamplesNumber = AtomicInteger(0)
+    var numberOfCommits = 0
 
     fun report() :String {
         return "Found ${foundExamples.get()} examples," +
