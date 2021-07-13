@@ -1,5 +1,5 @@
 import com.google.gson.Gson
-import org.jetbrains.research.commentupdater.dataset.DatasetExample
+import org.jetbrains.research.commentupdater.dataset.DatasetSample
 import java.io.File
 import java.io.FileWriter
 import java.io.Writer
@@ -29,9 +29,9 @@ class SampleWriter {
         projectWriter.close()
     }
 
-    fun saveMetrics(datasetExample: DatasetExample
+    fun saveMetrics(datasetSample: DatasetSample
     ) {
-        val jsonExample = gson.toJson(datasetExample)
+        val jsonExample = gson.toJson(datasetSample)
         projectWriter.write(jsonExample)
         projectWriter.write(",")
     }

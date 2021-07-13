@@ -2,7 +2,7 @@ package org.jetbrains.research.commentupdater.dataset
 
 import org.jetbrains.research.commentupdater.models.MethodMetric
 
-data class DatasetExample(
+data class DatasetSample(
     val oldCode: String,
     val newCode: String,
     val oldComment: String,
