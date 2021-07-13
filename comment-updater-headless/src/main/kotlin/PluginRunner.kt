@@ -158,8 +158,7 @@ class CodeCommentExtractor {
 
                 }
             } catch (e: Exception) {
-                log(LogLevel.ERROR, "Failed with an exception: $e")
-                e.printStackTrace()
+                log(LogLevel.ERROR, "Failed with an exception: ${e.message}")
             }
             finally {
                 latch.countDown()
@@ -191,8 +190,7 @@ class CodeCommentExtractor {
         } catch (e: Exception) {
             // In case of exception inside commit processing, just continue working and log exception
             // We don't want to fall because of strange mistake on single commit
-            log(LogLevel.ERROR, "Error during commit ${commit.id.toShortString()} processing", logThread = true)
-            e.printStackTrace()
+            log(LogLevel.ERROR, "Error during commit ${commit.id.toShortString()} processing: ${e.message}", logThread = true)
         }
     }
 
@@ -211,8 +209,7 @@ class CodeCommentExtractor {
         val changedMethods = try {
             ProjectMethodExtractor.extractChangedMethods(project, change, refactorings)
         } catch (e: VcsException) {
-            log(LogLevel.WARN, "Unexpected VCS exception", logThread = true)
-            e.printStackTrace()
+            log(LogLevel.WARN, "Unexpected VCS exception: ${e.message}", logThread = true)
             null
         }
 
