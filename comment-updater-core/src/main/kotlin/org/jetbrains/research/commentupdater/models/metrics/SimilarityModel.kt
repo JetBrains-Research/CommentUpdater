@@ -32,7 +32,7 @@ class SimilarityModel {
     }
 
     fun compute(tokens1: List<String>, tokens2: List<String>, useCodeVocab: Boolean): Double {
-        val (vocab, embeddings) = if(useCodeVocab) {
+        val (vocab, embeddings) = if (useCodeVocab) {
             embeddingConfig.codeVocab to codeEmbeddingsSession
         } else {
             embeddingConfig.commentVocab to commentEmbeddingSession
@@ -40,7 +40,6 @@ class SimilarityModel {
 
         val modifier = PrimitiveMath.ROOT.parameter(2)
         val storeFactory = Primitive64Store.FACTORY
-        val matrixFactory = Primitive64Matrix.FACTORY
         // PrimitiveMatrix.Factory and PrimitiveDenseStore.Factory are very similar.
         // Every factory in ojAlgo that makes 2D-structures
         // extends/implements the same interface.

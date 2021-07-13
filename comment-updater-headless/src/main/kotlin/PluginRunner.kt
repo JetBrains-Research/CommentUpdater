@@ -25,27 +25,24 @@ import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
-
-class PluginRunner: ApplicationStarter {
+class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
+
     override fun main(args: Array<String>) {
         CodeCommentExtractor().main(args)
     }
 }
 
-
 class CodeCommentExtractor {
-
     // Reading project paths
     private val inputPath = HeadlessConfig.INPUT_FILE
 
-    private val exampleWriter = ExampleWriter()
+    private val exampleWriter = SampleWriter()
 
     private val statsHandler = StatisticHandler()
 
     // Metric model
     private val metricsModel = MetricsCalculator()
-
 
     companion object {
         enum class LogLevel {
@@ -55,9 +52,12 @@ class CodeCommentExtractor {
         var projectTag: String = ""
         var projectProcess: String = ""
 
-        fun  log(level: LogLevel, message: String, logThread: Boolean = false,
-                 applicationTag: String = "[HeadlessCommentUpdater]") {
-            val fullLogMessage = "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $projectProcess] $message"
+        fun log(
+            level: LogLevel, message: String, logThread: Boolean = false,
+            applicationTag: String = "[HeadlessCommentUpdater]"
+        ) {
+            val fullLogMessage =
+                "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $projectProcess] $message"
 
             when (level) {
                 LogLevel.INFO -> {
@@ -73,21 +73,17 @@ class CodeCommentExtractor {
         }
     }
 
-
     fun main(args: Array<out String>) {
-
         log(LogLevel.INFO, "Starting Application")
 
         val inputFile = File(inputPath)
 
         val projectPaths = inputFile.readLines()
 
-
         // You want to launch your processing work in different thread,
         // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
-        thread (start = true){
-            projectPaths.forEachIndexed {
-                index, projectPath ->
+        thread(start = true) {
+            projectPaths.forEachIndexed { index, projectPath ->
 
                 exampleWriter.setProjectFile(projectPath)
                 projectTag = exampleWriter.projectName
@@ -106,7 +102,6 @@ class CodeCommentExtractor {
         }
     }
 
-
     private fun onStart() {
         log(LogLevel.INFO, "Open project")
         exampleWriter.open()
@@ -118,10 +113,9 @@ class CodeCommentExtractor {
         statsHandler.refresh()
     }
 
-
     private fun collectProjectExamples(projectPath: String) {
         val project = ProjectUtil.openOrImport(projectPath, null, true)
-        if( project == null) {
+        if (project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
             return
         }
@@ -159,8 +153,7 @@ class CodeCommentExtractor {
                 }
             } catch (e: Exception) {
                 log(LogLevel.ERROR, "Failed with an exception: ${e.message}")
-            }
-            finally {
+            } finally {
                 latch.countDown()
             }
         }
@@ -168,7 +161,6 @@ class CodeCommentExtractor {
         vcsManager.runAfterInitialization(runnable)
         latch.await()
     }
-
 
     private fun processCommit(
         commit: GitCommit,
@@ -190,15 +182,19 @@ class CodeCommentExtractor {
         } catch (e: Exception) {
             // In case of exception inside commit processing, just continue working and log exception
             // We don't want to fall because of strange mistake on single commit
-            log(LogLevel.ERROR, "Error during commit ${commit.id.toShortString()} processing: ${e.message}", logThread = true)
+            log(
+                LogLevel.ERROR,
+                "Error during commit ${commit.id.toShortString()} processing: ${e.message}",
+                logThread = true
+            )
         }
     }
-
 
     private fun collectChange(
         change: Change,
         commit: GitCommit,
-        project: Project) {
+        project: Project
+    ) {
         statsHandler.processedFileChanges.incrementAndGet()
 
         val fileName = change.afterRevision?.file?.name ?: ""
@@ -245,9 +241,7 @@ class CodeCommentExtractor {
                     metricsModel.calculateMetrics(oldCode, newCode, oldComment, newComment, methodRefactorings)
                         ?: continue
 
-
                 statsHandler.foundExamples.incrementAndGet()
-
 
                 val datasetExample = DatasetExample(
                     oldCode = oldCode,
@@ -261,18 +255,11 @@ class CodeCommentExtractor {
                     oldMethodName = oldMethodName,
                     newMethodName = newMethodName
                 )
-                exampleWriter.saveMetric(datasetExample)
+                exampleWriter.saveMetrics(datasetExample)
 
             }
         }
     }
-
-
-
-
-
-
-
 }
 
 

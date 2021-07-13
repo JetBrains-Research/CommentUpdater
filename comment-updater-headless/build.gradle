@@ -1,15 +1,10 @@
 group = rootProject.group
 version = rootProject.version
 
-
-
 dependencies {
-
     implementation(project(":comment-updater-core"))
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0"
 }
-
-
 
 tasks.runIde {
     runIde.args "CommentUpdater"

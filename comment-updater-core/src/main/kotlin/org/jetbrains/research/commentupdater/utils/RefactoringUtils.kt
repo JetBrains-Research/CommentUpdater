@@ -4,7 +4,6 @@ import gr.uom.java.xmi.diff.RenameOperationRefactoring
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 
-
 object RefactoringUtils {
     /**
      * @return: Map from old method name to new method name

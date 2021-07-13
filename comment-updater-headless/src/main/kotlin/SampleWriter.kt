@@ -4,7 +4,7 @@ import java.io.File
 import java.io.FileWriter
 import java.io.Writer
 
-class ExampleWriter {
+class SampleWriter {
 
     // Saving data
     val outputPath = HeadlessConfig.OUTPUT_DIR_PATH
@@ -29,7 +29,7 @@ class ExampleWriter {
         projectWriter.close()
     }
 
-    fun saveMetric(datasetExample: DatasetExample
+    fun saveMetrics(datasetExample: DatasetExample
     ) {
         val jsonExample = gson.toJson(datasetExample)
         projectWriter.write(jsonExample)

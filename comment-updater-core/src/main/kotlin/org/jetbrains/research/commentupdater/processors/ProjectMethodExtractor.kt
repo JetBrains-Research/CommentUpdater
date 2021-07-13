@@ -40,8 +40,6 @@ object ProjectMethodExtractor {
             oldNamesToMethods.get(beforeName)?.let { oldMethod ->
                 changedMethodPairs.add(oldMethod to newMethod)
             }
-
-
         }
         return changedMethodPairs
     }
@@ -62,7 +60,6 @@ object ProjectMethodExtractor {
             }.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }
-
         }
 
         return methodsWithNames
