@@ -9,7 +9,6 @@ import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.ojalgo.array.Primitive64Array
 import org.ojalgo.function.constant.PrimitiveMath
-import org.ojalgo.matrix.Primitive64Matrix
 import org.ojalgo.matrix.store.Primitive64Store
 import java.io.File
 
@@ -31,77 +30,98 @@ class SimilarityModel {
         commentEmbeddingSession = env.createSession(ModelFilesConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
     }
 
-    fun compute(tokens1: List<String>, tokens2: List<String>, useCodeVocab: Boolean): Double {
+    /**
+     * Compute similarity between two token sequences, as described in Liu 2018 paper
+     * Calculate embedding cos similarity for every pair (i,j) and (tokensA[i], tokensB[j])
+     * Aggregate this pairwise similarities into one number, similarity between tokensA and tokensB sequences
+     */
+    fun compute(tokensA: List<String>, tokensB: List<String>, useCodeVocab: Boolean): Double {
         val (vocab, embeddings) = if (useCodeVocab) {
             embeddingConfig.codeVocab to codeEmbeddingsSession
         } else {
             embeddingConfig.commentVocab to commentEmbeddingSession
         }
 
-        val modifier = PrimitiveMath.ROOT.parameter(2)
-        val storeFactory = Primitive64Store.FACTORY
-        // PrimitiveMatrix.Factory and PrimitiveDenseStore.Factory are very similar.
-        // Every factory in ojAlgo that makes 2D-structures
-        // extends/implements the same interface.
+        val embeddingMatrixA = buildEmbeddingMatrix(tokensA, vocab, embeddings)
+        val normMatrixA = getNormMatrix(tokensA.size.toLong(), embeddingMatrixA)
 
-        //val matrix1 = storeFactory.makeEye(tokens1Size.toLong(), EMBEDDING_SIZE.toLong())
-        val matrix1 = storeFactory.make(tokens1.size.toLong(), EMBEDDING_SIZE.toLong())
 
-        for (i in 0 until tokens1.size) {
-            val id = getIdOrUnk(tokens1[i], vocab)
-            val idTensor = ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env)
-            val inputs = mapOf("id" to idTensor)
-            embeddings.run(inputs).use { results ->
-                val embedding = results[0] as OnnxTensor
-                for (j in 0 until EMBEDDING_SIZE) {
-                    matrix1.set(i.toLong(), j.toLong(), embedding.floatBuffer[j].toDouble())
-                }
-            }
-            idTensor?.close()
-        }
-        val norm1 = matrix1.multiply(matrix1.transpose()).operateOnAll(modifier).sliceDiagonal()
-        val norm1Array = Primitive64Array.FACTORY.copy(norm1)
-        norm1Array.modifyAll(PrimitiveMath.INVERT)
-        val norm1Matrix = storeFactory.makeEye(tokens1.size.toLong(), tokens1.size.toLong())
-        norm1Matrix.fillDiagonal(norm1Array)
-        val matrix2 = storeFactory.make(tokens2.size.toLong(), EMBEDDING_SIZE.toLong())
-        for (i in 0 until tokens2.size) {
-            val id = getIdOrUnk(tokens2[i], vocab)
-            val idTensor = ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env)
-            val inputs = mapOf("id" to idTensor)
-            embeddings.run(inputs).use { results ->
-                val embedding = results[0] as OnnxTensor
-                for (j in 0 until EMBEDDING_SIZE) {
-                    matrix2.set(i.toLong(), j.toLong(), embedding.floatBuffer[j].toDouble())
-                }
-            }
-            idTensor?.close()
-        }
-        val norm2 = matrix2.multiply(matrix2.transpose()).operateOnAll(modifier).sliceDiagonal()
-        val norm2Array = Primitive64Array.FACTORY.copy(norm2)
-        norm2Array.modifyAll(PrimitiveMath.INVERT)
-        val norm2Matrix = storeFactory.makeEye(tokens2.size.toLong(), tokens2.size.toLong())
-        norm2Matrix.fillDiagonal(norm2Array)
-        val cosSimArray = norm1Matrix.multiply(matrix1.multiply(matrix2.transpose())).multiply(norm2Matrix)
+        val embeddingMatrixB = buildEmbeddingMatrix(tokensB, vocab, embeddings)
+        val normMatrixB = getNormMatrix(tokensB.size.toLong(), embeddingMatrixB)
+
+        // cosSimMatrix[i, j] = cos_similarity(embedding of tokenA[i], embedding of tokenB[j])
+        // Multiply embeddingA * embeddingB and then normalize by rows and columns
+        // By multiplying with normalization matrices from left and right
+        // cosSim = Norm1 * (E1 * E2.T) * Norm2
+        val cosSimMatrix = normMatrixA.multiply(embeddingMatrixA.multiply(embeddingMatrixB.transpose())).multiply(normMatrixB)
 
         // Liu2018 similarity definition
-        val simS1S2 = (0 until tokens1.size).sumOf {
+        val simS1S2 = (0 until tokensA.size).sumOf {
             i ->
-            (0 until tokens2.size).maxOf {
+            (0 until tokensB.size).maxOf {
                 j ->
-                cosSimArray.get(i.toLong(), j.toLong())
+                cosSimMatrix.get(i.toLong(), j.toLong())
             }
-        } / tokens1.size
-        val simS2S1 = (0 until tokens2.size).sumOf {
+        } / tokensA.size
+        val simS2S1 = (0 until tokensB.size).sumOf {
                 j ->
-            (0 until tokens1.size).maxOf {
+            (0 until tokensA.size).maxOf {
                     i ->
-                cosSimArray.get(i.toLong(), j.toLong())
+                cosSimMatrix.get(i.toLong(), j.toLong())
             }
-        } / tokens2.size
+        } / tokensB.size
 
         return (simS1S2 + simS2S1) / 2.0
     }
+
+    /**
+     * Return diagonal matrix, with a_{i, i} := 1 / root(<embedding[i], embedding[i]>)
+     */
+    private fun getNormMatrix(
+        tokensSize: Long,
+        embeddingMatrix: Primitive64Store
+    ): Primitive64Store {
+        // Square root from x
+        val modifier = PrimitiveMath.ROOT.parameter(2)
+
+        // normVector[i] = root(<embedding for tokens[i], embedding for tokens[i]>)
+        val normVector = embeddingMatrix.multiply(embeddingMatrix.transpose()).operateOnAll(modifier).sliceDiagonal()
+
+        // normArray[i] = 1 / normVector[i]
+        val normArray = Primitive64Array.FACTORY.copy(normVector)
+        normArray.modifyAll(PrimitiveMath.INVERT)
+
+        // Diagonal matrix with normArray values on main diagonal
+        val normMatrix = Primitive64Store.FACTORY.makeEye(tokensSize, tokensSize)
+        normMatrix.fillDiagonal(normArray)
+
+        return normMatrix
+    }
+
+    private fun buildEmbeddingMatrix(
+        tokens: List<String>,
+        vocab: MutableMap<String, Int>,
+        embeddings: OrtSession
+    ): Primitive64Store {
+
+        // Embedding matrix for tokens
+        val embeddingMatrix = Primitive64Store.FACTORY.make(tokens.size.toLong(), EMBEDDING_SIZE.toLong())
+
+        for (i in 0 until tokens.size) {
+            val id = getIdOrUnk(tokens[i], vocab)
+            val idTensor = ONNXTensorUtils.oneDListToTensor(listOf(id.toLong()), env)
+            val inputs = mapOf("id" to idTensor)
+            embeddings.run(inputs).use { results ->
+                val embedding = results[0] as OnnxTensor
+                for (j in 0 until EMBEDDING_SIZE) {
+                    embeddingMatrix.set(i.toLong(), j.toLong(), embedding.floatBuffer[j].toDouble())
+                }
+            }
+            idTensor?.close()
+        }
+        return embeddingMatrix
+    }
+
 
     fun getIdOrUnk(token: String, vocab: MutableMap<String, Int>): Int {
         return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unknownToken, 0)
