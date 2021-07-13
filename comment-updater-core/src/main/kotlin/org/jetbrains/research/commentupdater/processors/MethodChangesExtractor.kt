@@ -26,12 +26,10 @@ object MethodChangesExtractor {
             ).accept(
                 object : JavaRecursiveElementVisitor() {
                     override fun visitDocComment(comment: PsiDocComment?) {
-                        if (comment != null) {
-                            if (comment.owner is PsiMethod) {
-                                val name = (comment.owner as PsiMethod).qualifiedName
-                                if (name == oldName)
-                                    oldMethod = comment.owner as PsiMethod
-                            }
+                        if (comment != null && comment.owner is PsiMethod) {
+                            val name = (comment.owner as PsiMethod).qualifiedName
+                            if (name == oldName)
+                                oldMethod = comment.owner as PsiMethod
                         }
                         super.visitDocComment(comment)
                     }
