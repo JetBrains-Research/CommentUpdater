@@ -4,7 +4,7 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 
 /**
- * Converts List arrays to ONNXTensors
+ * Converts 1d, 2d or 3d List to ONNXTensor
  * This tensors must be closed!
  */
 object ONNXTensorUtils {
