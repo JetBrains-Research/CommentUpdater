@@ -197,7 +197,7 @@ class CodeCommentExtractor {
     ) {
         statsHandler.processedFileChanges.incrementAndGet()
 
-        val fileName = change.afterRevision?.file?.name ?: ""
+        val newFileName = change.afterRevision?.file?.name ?: ""
 
         val refactorings = RefactoringExtractor.extract(change)
         val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
@@ -249,7 +249,7 @@ class CodeCommentExtractor {
                     oldComment = oldComment,
                     newComment = newComment,
                     commitId = commit.id.toString(),
-                    fileName = fileName,
+                    newFileName = newFileName,
                     metric = metric,
                     commitTime = commit.timestamp.toString(),
                     oldMethodName = oldMethodName,

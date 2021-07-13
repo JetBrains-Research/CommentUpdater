@@ -11,6 +11,6 @@ data class DatasetSample(
     val newMethodName: String,
     val commitId: String,
     val commitTime: String,
-    val fileName: String,
+    val newFileName: String,
     val metric: MethodMetric
 )
