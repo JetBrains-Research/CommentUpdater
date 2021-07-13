@@ -67,7 +67,11 @@ class MetricsCalculator {
             }
         }
 
-        val filterSubTokens = {s: String -> s.any { c -> c.isLetter() }}
+        val filterSubTokens = {
+            subToken: String ->
+            val hasLetters: Boolean = subToken.any { it.isLetter() }
+            hasLetters
+        }
 
         val oldSubTokens = CodeCommentTokenizer.subTokenizeCode(oldCode).filter(filterSubTokens)
         val newSubTokens = CodeCommentTokenizer.subTokenizeCode(newCode).filter(filterSubTokens)
@@ -81,7 +85,7 @@ class MetricsCalculator {
 
         val commentLen = commentSubTokens.size
 
-        val (spans, diffTokens, diffCommands) = CodeCommentDiffs.computeCodeDiffs(oldSubTokens, newSubTokens)
+        val (_, diffTokens, diffCommands) = CodeCommentDiffs.computeCodeDiffs(oldSubTokens, newSubTokens)
 
         val commentSpans = CodeCommentDiffs.computeMinimalCommentDiffs(oldCommentSubTokens, commentSubTokens)
 
