@@ -1,0 +1,6 @@
+rootProject.name = 'commentupdater'
+include (
+        'comment-updater-core',
+        'comment-updater-plugin',
+        'comment-updater-headless'
+)
