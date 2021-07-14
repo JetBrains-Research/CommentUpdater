@@ -29,13 +29,14 @@ class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
     override fun main(args: Array<String>) {
-        CodeCommentExtractor().main(args)
+        CodeCommentExtractor().main(args.drop(1))
     }
 }
 
 class CodeCommentExtractor {
-    // Reading project paths
-    private val inputPath = HeadlessConfig.INPUT_FILE
+
+
+    private val inputPath = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/input.txt"
 
     private val exampleWriter = SampleWriter()
 
@@ -73,7 +74,8 @@ class CodeCommentExtractor {
         }
     }
 
-    fun main(args: Array<out String>) {
+    fun main(args: List<String>) {
+        println(args)
         log(LogLevel.INFO, "Starting Application")
 
         val inputFile = File(inputPath)
