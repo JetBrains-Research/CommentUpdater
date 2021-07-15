@@ -29,6 +29,7 @@ class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
     override fun main(args: Array<String>) {
+        //println("ARGS: ${args.joinToString { it }}")
         CodeCommentExtractor().main(args.drop(1))
     }
 }
@@ -36,7 +37,7 @@ class PluginRunner : ApplicationStarter {
 class CodeCommentExtractor {
 
 
-    private val inputPath = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/input.txt"
+    private val inputPath = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/input.txt"
 
     private val exampleWriter = SampleWriter()
 
