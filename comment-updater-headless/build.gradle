@@ -7,15 +7,15 @@ dependencies {
 }
 
 
-//task runCommentUpdater(dependsOn: runIde) {}
-//
-//gradle.taskGraph.whenReady { graph ->
-//    if (graph.hasTask(runCommentUpdater)) {
-//        runIde.args "CommentUpdater", "$dataset", "$output", "$config"
-//        runIde.jvmArgs "-Djava.awt.headless=true"
-//        runIde.maxHeapSize = "20g"
-//    }
-//}
+task runCommentUpdater(dependsOn: runIde) {}
+
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(runCommentUpdater)) {
+        runIde.args "CommentUpdater", "$dataset", "$output", "$config"
+        runIde.jvmArgs "-Djava.awt.headless=true"
+        runIde.maxHeapSize = "20g"
+    }
+}
 
 tasks.runIde {
     runIde.args "CommentUpdater"
