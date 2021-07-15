@@ -1,6 +1,7 @@
 package org.jetbrains.research.commentupdater.models
 
 import org.jetbrains.research.commentupdater.CodeCommentDiffs
+import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.models.metrics.SimilarityModel
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import org.refactoringminer.api.Refactoring
@@ -29,9 +30,9 @@ data class MethodMetric(
     val oldNewChangedSimDist: Double
 )
 
-class MetricsCalculator {
+class MetricsCalculator(config: ModelFilesConfig) {
 
-    val simModel: SimilarityModel = SimilarityModel()
+    val simModel: SimilarityModel = SimilarityModel(config)
 
     fun calculateMetrics(oldCode: String, newCode: String, oldComment: String, newComment: String,
     methodRefactorings: MutableList<Refactoring> = mutableListOf()): MethodMetric? {

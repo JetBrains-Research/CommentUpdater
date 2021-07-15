@@ -1,11 +1,11 @@
 package org.jetbrains.research.commentupdater.models.config
 
-object ModelFilesConfig {
-    val DATA_DIR = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1"
+import java.io.File
 
-    val CODE_EMBEDDING_ONNX_FILE = "$DATA_DIR/code_embeddings.onnx"
-    val COMMENT_EMBEDDING_ONNX_FILE = "$DATA_DIR/comment_embeddings.onnx"
+class ModelFilesConfig(dataDir: File = File("/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1")) {
+    val CODE_EMBEDDING_ONNX_FILE = dataDir.resolve("code_embeddings.onnx").path
+    val COMMENT_EMBEDDING_ONNX_FILE = dataDir.resolve("comment_embeddings.onnx").path
 
-    val JIT_ONNX_FILE = "$DATA_DIR/model.onnx"
-    val EMBEDDING_FILE = "$DATA_DIR/model_embedding_config.json"
+    val JIT_ONNX_FILE = dataDir.resolve("model.onnx").path
+    val EMBEDDING_FILE = dataDir.resolve("model_embedding_config.json").path
 }

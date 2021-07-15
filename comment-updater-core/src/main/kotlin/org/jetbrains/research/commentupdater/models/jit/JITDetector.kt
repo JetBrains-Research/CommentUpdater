@@ -37,14 +37,16 @@ class JITDetector {
     val TRUE_PROB = 0.5
     val env: OrtEnvironment
     val session: OrtSession
+    val modelPathsConfig: ModelFilesConfig
 
     init {
+        modelPathsConfig = ModelFilesConfig()
         env = OrtEnvironment.getEnvironment()
-        session = env.createSession(ModelFilesConfig.JIT_ONNX_FILE, OrtSession.SessionOptions())
+        session = env.createSession(modelPathsConfig.JIT_ONNX_FILE, OrtSession.SessionOptions())
     }
 
     val embeddingConfig by lazy {
-        Klaxon().parse<EmbeddingConfig>(File(ModelFilesConfig.EMBEDDING_FILE)) ?: throw KlaxonException(":(")
+        Klaxon().parse<EmbeddingConfig>(File(modelPathsConfig.EMBEDDING_FILE)) ?: throw KlaxonException(":(")
     }
 
     fun getPaddedIds(

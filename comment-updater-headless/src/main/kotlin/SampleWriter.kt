@@ -4,10 +4,10 @@ import java.io.File
 import java.io.FileWriter
 import java.io.Writer
 
-class SampleWriter {
+class SampleWriter(output: File) {
 
     // Saving data
-    val outputPath = HeadlessConfig.OUTPUT_DIR_PATH
+    val outputPath = output.path
 
     lateinit var projectFile: File
     lateinit var projectWriter: Writer

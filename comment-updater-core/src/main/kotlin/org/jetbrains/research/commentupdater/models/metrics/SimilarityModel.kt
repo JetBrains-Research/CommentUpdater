@@ -12,7 +12,7 @@ import org.ojalgo.function.constant.PrimitiveMath
 import org.ojalgo.matrix.store.Primitive64Store
 import java.io.File
 
-class SimilarityModel {
+class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
 
     val embeddingConfig: EmbeddingConfig
     val env: OrtEnvironment
@@ -21,13 +21,13 @@ class SimilarityModel {
     val EMBEDDING_SIZE = 64
 
     init {
-        embeddingConfig = Klaxon().parse<EmbeddingConfig>(File(ModelFilesConfig.EMBEDDING_FILE))
+        embeddingConfig = Klaxon().parse<EmbeddingConfig>(File(modelPathsConfig.EMBEDDING_FILE))
             ?: throw Exception("can't load embeddings")
 
 
         env = OrtEnvironment.getEnvironment()
-        codeEmbeddingsSession = env.createSession(ModelFilesConfig.CODE_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
-        commentEmbeddingSession = env.createSession(ModelFilesConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
+        codeEmbeddingsSession = env.createSession(modelPathsConfig.CODE_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
+        commentEmbeddingSession = env.createSession(modelPathsConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
     }
 
     /**

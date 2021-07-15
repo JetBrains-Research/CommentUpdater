@@ -1,3 +1,6 @@
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.types.file
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
@@ -16,11 +19,11 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.research.commentupdater.dataset.DatasetSample
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
+import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import java.io.File
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
@@ -29,22 +32,22 @@ class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
 
     override fun main(args: Array<String>) {
-        //println("ARGS: ${args.joinToString { it }}")
         CodeCommentExtractor().main(args.drop(1))
     }
 }
 
-class CodeCommentExtractor {
+class CodeCommentExtractor : CliktCommand() {
 
+    private val dataset by argument(help = "Path to dataset").file(mustExist = true, canBeDir = false)
+    private val output by argument(help = "Output directory").file(canBeFile = false)
+    private val config by argument(help = "Model config").file(canBeFile = false)
 
-    private val inputPath = "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/input.txt"
-
-    private val exampleWriter = SampleWriter()
+    lateinit var sampleWriter: SampleWriter
 
     private val statsHandler = StatisticHandler()
 
     // Metric model
-    private val metricsModel = MetricsCalculator()
+    lateinit var metricsModel: MetricsCalculator
 
     companion object {
         enum class LogLevel {
@@ -75,11 +78,15 @@ class CodeCommentExtractor {
         }
     }
 
-    fun main(args: List<String>) {
-        println(args)
+    override fun run() {
+        println(listOf(dataset.path, output.path, config.path).joinToString { it })
         log(LogLevel.INFO, "Starting Application")
 
-        val inputFile = File(inputPath)
+        val inputFile = dataset
+
+        metricsModel = MetricsCalculator(ModelFilesConfig(config))
+
+        sampleWriter = SampleWriter(output)
 
         val projectPaths = inputFile.readLines()
 
@@ -88,8 +95,8 @@ class CodeCommentExtractor {
         thread(start = true) {
             projectPaths.forEachIndexed { index, projectPath ->
 
-                exampleWriter.setProjectFile(projectPath)
-                projectTag = exampleWriter.projectName
+                sampleWriter.setProjectFile(projectPath)
+                projectTag = sampleWriter.projectName
                 projectProcess = "${index + 1}/${projectPaths.size}"
 
                 onStart()
@@ -107,12 +114,12 @@ class CodeCommentExtractor {
 
     private fun onStart() {
         log(LogLevel.INFO, "Open project")
-        exampleWriter.open()
+        sampleWriter.open()
     }
 
     private fun onFinish() {
         log(LogLevel.INFO, "Close project. ${statsHandler.report()}")
-        exampleWriter.close()
+        sampleWriter.close()
         statsHandler.refresh()
     }
 
@@ -258,7 +265,7 @@ class CodeCommentExtractor {
                     oldMethodName = oldMethodName,
                     newMethodName = newMethodName
                 )
-                exampleWriter.saveMetrics(datasetExample)
+                sampleWriter.saveMetrics(datasetExample)
 
             }
         }
