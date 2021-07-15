@@ -1,5 +1,3 @@
-package org.jetbrains.research.refactorinsight
-
 import com.intellij.AbstractBundle
 import com.intellij.reference.SoftReference
 import org.jetbrains.annotations.PropertyKey

@@ -11,7 +11,6 @@ import org.jetbrains.research.commentupdater.JITDetector
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
-import org.jetbrains.research.refactorinsight.CommentUpdaterBundle
 import org.refactoringminer.api.Refactoring
 
 class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
