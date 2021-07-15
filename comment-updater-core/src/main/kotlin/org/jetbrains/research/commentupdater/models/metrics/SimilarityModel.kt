@@ -13,7 +13,6 @@ import org.ojalgo.matrix.store.Primitive64Store
 import java.io.File
 
 class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
-
     val embeddingConfig: EmbeddingConfig
     val env: OrtEnvironment
     val codeEmbeddingsSession: OrtSession
@@ -23,7 +22,6 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
     init {
         embeddingConfig = Klaxon().parse<EmbeddingConfig>(File(modelPathsConfig.EMBEDDING_FILE))
             ?: throw Exception("can't load embeddings")
-
 
         env = OrtEnvironment.getEnvironment()
         codeEmbeddingsSession = env.createSession(modelPathsConfig.CODE_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())

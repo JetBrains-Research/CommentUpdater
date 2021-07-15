@@ -37,7 +37,6 @@ class PluginRunner : ApplicationStarter {
 }
 
 class CodeCommentExtractor : CliktCommand() {
-
     private val dataset by argument(help = "Path to dataset").file(mustExist = true, canBeDir = false)
     private val output by argument(help = "Output directory").file(canBeFile = false)
     private val config by argument(help = "Model config").file(canBeFile = false)
@@ -79,7 +78,6 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     override fun run() {
-        println(listOf(dataset.path, output.path, config.path).joinToString { it })
         log(LogLevel.INFO, "Starting Application")
 
         val inputFile = dataset
@@ -94,7 +92,6 @@ class CodeCommentExtractor : CliktCommand() {
         // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
         thread(start = true) {
             projectPaths.forEachIndexed { index, projectPath ->
-
                 sampleWriter.setProjectFile(projectPath)
                 projectTag = sampleWriter.projectName
                 projectProcess = "${index + 1}/${projectPaths.size}"

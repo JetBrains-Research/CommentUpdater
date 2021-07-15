@@ -31,7 +31,6 @@ data class MethodMetric(
 )
 
 class MetricsCalculator(config: ModelFilesConfig) {
-
     val simModel: SimilarityModel = SimilarityModel(config)
 
     fun calculateMetrics(oldCode: String, newCode: String, oldComment: String, newComment: String,
@@ -128,7 +127,6 @@ class MetricsCalculator(config: ModelFilesConfig) {
             true
         )
 
-
         val newCodeCommentSim = simModel.compute(
             newSubTokens,
             commentSubTokens,
@@ -156,7 +154,6 @@ class MetricsCalculator(config: ModelFilesConfig) {
             0.0
         }
 
-
         val newChangedCommentSim = if (addedStatements.isNotEmpty()) {
             simModel.compute(
                 addedStatements,
@@ -166,7 +163,6 @@ class MetricsCalculator(config: ModelFilesConfig) {
         } else {
             0.0
         }
-
 
         val oldNewChangedSimDist = (newChangedCommentSim - oldChangedCommentSim).absoluteValue
 

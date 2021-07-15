@@ -35,8 +35,8 @@ allprojects{
     }
 
     intellij {
-        localPath = '/Users/Ivan.Pavlov/Downloads/ideaIC-2021.1'
-        //version = '2021.1'
+        //localPath = '/Users/Ivan.Pavlov/Downloads/ideaIC-2021.1'
+        version = '2021.1'
         plugins 'git4idea', 'java'
     }
 }
