@@ -1,7 +1,8 @@
+package org.jetbrains.research.commentupdater
+
 import org.jetbrains.research.commentupdater.dataset.DatasetSample
 import java.io.File
 import com.google.gson.Gson
-import java.io.FileWriter
 import java.io.Writer
 
 class SampleWriter(output: File) {
@@ -15,8 +16,7 @@ class SampleWriter(output: File) {
 
     fun open() {
         outputFile = File(outputPath)
-        writer = FileWriter(outputFile)
-        writer.write("[")
+        outputFile.writeText("[")
     }
 
     fun close() {

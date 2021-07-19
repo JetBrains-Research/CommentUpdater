@@ -1,10 +1,11 @@
 package org.jetbrains.research.commentupdater.processors
 
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
+import com.intellij.openapi.vcs.VcsException
 import gr.uom.java.xmi.UMLModelASTReader
 import gr.uom.java.xmi.diff.*
+import org.jetbrains.annotations.Nullable
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import java.nio.file.Files.createFile
@@ -67,30 +68,36 @@ object RefactoringExtractor {
         try {
             val oldContent = change.beforeRevision?.content ?: return listOf()
             val newContent = change.afterRevision?.content ?: return listOf()
-            val dir1 = createTempDirectory("version1")
-            val file1 = createFile(dir1.resolve("file.java"))
-            file1.toFile().writeText(oldContent)
-
-            val dir2 = createTempDirectory("version2")
-            val file2 = createFile(dir2.resolve("file.java"))
-            file2.toFile().writeText(newContent)
-
-            val model1 = UMLModelASTReader(dir1.toFile()).umlModel
-            val model2 = UMLModelASTReader(dir2.toFile()).umlModel
-            val modelDiff = model1.diff(model2)
-
-            file1.toFile().delete()
-            file2.toFile().delete()
-            dir1.toFile().delete()
-            dir2.toFile().delete()
-
-            return modelDiff.refactorings.filter {
-                it.refactoringType in REFACTORINGS
-            }
-
+            return extract(oldContent, newContent)
         } catch (e: VcsException) {
             LOG.warn("[CommentUpdater] Failed to get a file's content from the last revision.")
         }
         return listOf()
+    }
+
+    fun extract(
+        oldContent: String,
+        newContent: String
+    ): List<Refactoring> {
+        val dir1 = createTempDirectory("version1")
+        val file1 = createFile(dir1.resolve("file.java"))
+        file1.toFile().writeText(oldContent)
+
+        val dir2 = createTempDirectory("version2")
+        val file2 = createFile(dir2.resolve("file.java"))
+        file2.toFile().writeText(newContent)
+
+        val model1 = UMLModelASTReader(dir1.toFile()).umlModel
+        val model2 = UMLModelASTReader(dir2.toFile()).umlModel
+        val modelDiff = model1.diff(model2)
+
+        file1.toFile().delete()
+        file2.toFile().delete()
+        dir1.toFile().delete()
+        dir2.toFile().delete()
+
+        return modelDiff.refactorings.filter {
+            it.refactoringType in REFACTORINGS
+        }
     }
 }

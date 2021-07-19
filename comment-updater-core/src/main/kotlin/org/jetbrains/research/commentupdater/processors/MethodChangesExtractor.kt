@@ -7,11 +7,43 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocComment
+import org.jetbrains.research.commentupdater.CodeCommentDiffs
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 
 object MethodChangesExtractor {
     private val LOG: Logger =
         Logger.getInstance(javaClass)
+
+    fun checkMethodChanged(oldComment: String, oldCode: String, newComment: String, newCode: String): Boolean {
+        val filterSubTokens = {
+                subToken: String ->
+            val hasLetters: Boolean = subToken.any { it.isLetter() }
+            hasLetters
+        }
+
+        val oldSubTokens = CodeCommentTokenizer.subTokenizeCode(oldCode).filter(filterSubTokens)
+        val newSubTokens = CodeCommentTokenizer.subTokenizeCode(newCode).filter(filterSubTokens)
+
+        val commentSubTokens = CodeCommentTokenizer.subTokenizeComment(newComment).filter(filterSubTokens)
+
+        val oldCommentSubTokens = CodeCommentTokenizer.subTokenizeComment(oldComment).filter(filterSubTokens)
+
+        val (_, _, diffCommands) = CodeCommentDiffs.computeCodeDiffs(oldSubTokens, newSubTokens)
+
+        val commentSpans = CodeCommentDiffs.computeMinimalCommentDiffs(oldCommentSubTokens, commentSubTokens)
+
+        val changedCodeLen = diffCommands.count {
+            it != CodeCommentDiffs.KEEP
+        }
+
+        val changeCommentLen = commentSpans.size
+
+        // If code and comment are unchanged, we aren't interested
+        if (changedCodeLen == 0 && changeCommentLen == 0) {
+            return false
+        }
+        return true
+    }
 
     fun getOldMethod(method: PsiMethod, change: Change, oldName: String): PsiMethod? {
         val psiFile = method.containingFile

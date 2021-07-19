@@ -17,9 +17,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.research.commentupdater.dataset.DatasetSample
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
+import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.qualifiedName
@@ -37,16 +40,17 @@ class PluginRunner : ApplicationStarter {
 }
 
 class CodeCommentExtractor : CliktCommand() {
+    private val writeMutex = Mutex()
+
     private val dataset by argument(help = "Path to dataset").file(mustExist = true, canBeDir = false)
     private val output by argument(help = "Output directory").file(canBeFile = false)
     private val config by argument(help = "Model config").file(canBeFile = false)
 
-    lateinit var sampleWriter: SampleWriter
+    lateinit var rawSampleWriter: RawSampleWriter
 
     private val statsHandler = StatisticHandler()
 
-    // Metric model
-    lateinit var metricsModel: MetricsCalculator
+    private lateinit var metricsModel: MetricsCalculator
 
     companion object {
         enum class LogLevel {
@@ -78,45 +82,50 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     override fun run() {
-        log(LogLevel.INFO, "Starting Application")
-
-        val inputFile = dataset
-
-        metricsModel = MetricsCalculator(ModelFilesConfig(config))
-
-        sampleWriter = SampleWriter(output)
-
-        val projectPaths = inputFile.readLines()
+//        log(LogLevel.INFO, "Starting Application")
+//
+//        val inputFile = dataset
+//
+//        metricsModel = MetricsCalculator(ModelFilesConfig(config))
+//
+//        rawSampleWriter = RawSampleWriter(output)
+//
+//        val projectPaths = inputFile.readLines()
 
         // You want to launch your processing work in different thread,
         // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
         thread(start = true) {
-            projectPaths.forEachIndexed { index, projectPath ->
-                sampleWriter.setProjectFile(projectPath)
-                projectTag = sampleWriter.projectName
-                projectProcess = "${index + 1}/${projectPaths.size}"
+//            projectPaths.forEachIndexed { index, projectPath ->
+//                rawSampleWriter.setProjectFile(projectPath)
+//                projectTag = rawSampleWriter.projectName
+//                projectProcess = "${index + 1}/${projectPaths.size}"
+//
+//                onStart()
+//
+//                collectProjectExamples(projectPath)
+//
+//                onFinish()
+//            }
+//
+//            projectTag = ""
+//            log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
 
-                onStart()
-
-                collectProjectExamples(projectPath)
-
-                onFinish()
-            }
-
-            projectTag = ""
-            log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
+            PostProcessing().main(
+                listOf("/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/dataset",
+                    "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/output.json",
+                    "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/modelConfig"))
             exitProcess(0)
         }
     }
 
     private fun onStart() {
         log(LogLevel.INFO, "Open project")
-        sampleWriter.open()
+        rawSampleWriter.open()
     }
 
     private fun onFinish() {
         log(LogLevel.INFO, "Close project. ${statsHandler.report()}")
-        sampleWriter.close()
+        rawSampleWriter.close()
         statsHandler.refresh()
     }
 
@@ -150,7 +159,7 @@ class CodeCommentExtractor : CliktCommand() {
                         val commits = repo.walkAll()
                         statsHandler.numberOfCommits = commits.size
 
-                        commits.map { commit ->
+                        commits.mapIndexed {  index, commit ->
                             async(Dispatchers.Default) {
                                 processCommit(commit, project)
                             }
@@ -169,7 +178,7 @@ class CodeCommentExtractor : CliktCommand() {
         latch.await()
     }
 
-    private fun processCommit(
+    private suspend fun processCommit(
         commit: GitCommit,
         project: Project
     ) {
@@ -197,7 +206,7 @@ class CodeCommentExtractor : CliktCommand() {
         }
     }
 
-    private fun collectChange(
+    private suspend fun collectChange(
         change: Change,
         commit: GitCommit,
         project: Project
@@ -239,31 +248,32 @@ class CodeCommentExtractor : CliktCommand() {
                     continue
                 }
 
-                val methodRefactorings = methodsRefactorings.getOrDefault(
-                    newMethodName,
-                    mutableListOf()
-                )
-
-                val metric =
-                    metricsModel.calculateMetrics(oldCode, newCode, oldComment, newComment, methodRefactorings)
-                        ?: continue
+                if(!MethodChangesExtractor.checkMethodChanged(
+                        oldComment = oldComment,
+                        newComment = newComment,
+                        oldCode = oldCode,
+                        newCode = newCode
+                )) {
+                    continue
+                }
 
                 statsHandler.foundExamples.incrementAndGet()
 
-                val datasetExample = DatasetSample(
+                val datasetExample = RawDatasetSample(
                     oldCode = oldCode,
                     newCode = newCode,
                     oldComment = oldComment,
                     newComment = newComment,
                     commitId = commit.id.toString(),
                     newFileName = newFileName,
-                    metric = metric,
                     commitTime = commit.timestamp.toString(),
                     oldMethodName = oldMethodName,
                     newMethodName = newMethodName
                 )
-                sampleWriter.saveMetrics(datasetExample)
 
+                writeMutex.withLock {
+                    rawSampleWriter.saveMetrics(datasetExample)
+                }
             }
         }
     }

@@ -2,5 +2,6 @@ rootProject.name = 'commentupdater'
 include (
         'comment-updater-core',
         'comment-updater-plugin',
-        'comment-updater-headless'
+        'comment-updater-headless',
+        'comment-updater-postprocessing'
 )
