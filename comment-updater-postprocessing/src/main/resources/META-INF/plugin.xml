@@ -1,0 +1,19 @@
+<idea-plugin>
+    <id>org.jetbrains.research.commentupdater</id>
+    <name>PostProcessing</name>
+    <vendor>url="https://research.jetbrains.org/">JetBrains Research</vendor>
+
+    <description><![CDATA[
+     Detects outdated comments in Java code and suggests updates for them.
+    ]]>
+    </description>
+
+    <depends>com.intellij.modules.java</depends>
+
+    <depends>Git4Idea</depends>
+
+
+    <extensions defaultExtensionNs="com.intellij">
+        <appStarter implementation="PostProcessingPlugin"/>
+    </extensions>
+</idea-plugin>
