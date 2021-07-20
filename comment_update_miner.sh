@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [ $# -ne "3" ]; then
-    echo "usage: ./commentupdater.sh <path to project list file> <path to output folder> <path to model config>"
+    echo "usage: ./comment_update_miner.sh <path to project list file> <path to output folder> <path to model config>"
     exit 1
 fi
 
