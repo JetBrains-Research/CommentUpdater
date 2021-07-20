@@ -82,38 +82,33 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     override fun run() {
-//        log(LogLevel.INFO, "Starting Application")
-//
-//        val inputFile = dataset
-//
-//        metricsModel = MetricsCalculator(ModelFilesConfig(config))
-//
-//        rawSampleWriter = RawSampleWriter(output)
-//
-//        val projectPaths = inputFile.readLines()
+        log(LogLevel.INFO, "Starting Application")
+
+        val inputFile = dataset
+
+        metricsModel = MetricsCalculator(ModelFilesConfig(config))
+
+        rawSampleWriter = RawSampleWriter(output)
+
+        val projectPaths = inputFile.readLines()
 
         // You want to launch your processing work in different thread,
         // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
         thread(start = true) {
-//            projectPaths.forEachIndexed { index, projectPath ->
-//                rawSampleWriter.setProjectFile(projectPath)
-//                projectTag = rawSampleWriter.projectName
-//                projectProcess = "${index + 1}/${projectPaths.size}"
-//
-//                onStart()
-//
-//                collectProjectExamples(projectPath)
-//
-//                onFinish()
-//            }
-//
-//            projectTag = ""
-//            log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
+            projectPaths.forEachIndexed { index, projectPath ->
+                rawSampleWriter.setProjectFile(projectPath)
+                projectTag = rawSampleWriter.projectName
+                projectProcess = "${index + 1}/${projectPaths.size}"
 
-            PostProcessing().main(
-                listOf("/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/dataset",
-                    "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/output.json",
-                    "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/modelConfig"))
+                onStart()
+
+                collectProjectExamples(projectPath)
+
+                onFinish()
+            }
+
+            projectTag = ""
+            log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
             exitProcess(0)
         }
     }
@@ -216,8 +211,6 @@ class CodeCommentExtractor : CliktCommand() {
         val newFileName = change.afterRevision?.file?.name ?: ""
 
         val refactorings = RefactoringExtractor.extract(change)
-        val methodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
-
         val changedMethods = try {
             ProjectMethodExtractor.extractChangedMethods(project, change, refactorings)
         } catch (e: VcsException) {

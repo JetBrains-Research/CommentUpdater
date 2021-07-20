@@ -1,15 +1,16 @@
-package org.jetbrains.research.commentupdater;
-
 import com.beust.klaxon.Klaxon
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.file
+import com.intellij.openapi.application.ApplicationStarter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.jetbrains.research.commentupdater.SampleWriter
+import org.jetbrains.research.commentupdater.dataset.CommentUpdateLabel
 import org.jetbrains.research.commentupdater.dataset.DatasetSample
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import org.jetbrains.research.commentupdater.models.MethodMetric
@@ -17,6 +18,7 @@ import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import java.io.File
+import kotlin.system.exitProcess
 
 class MethodBranchHandler {
     var newBranch: Int = 0
@@ -55,17 +57,16 @@ class MethodBranchHandler {
     }
 }
 
+class PostProcessingPlugin: ApplicationStarter {
+    override fun getCommandName(): String = "PostProcessing"
 
-
-fun main(args: Array<String>) {
-    PostProcessing().main(
-        listOf(
-            "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/dataset",
-            "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/output.txt",
-            "/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater1/modelConfig"
+    override fun main(args: Array<String>) {
+        PostProcessing().main(
+            args.drop(1)
         )
-    )
+    }
 }
+
 
 class PostProcessing: CliktCommand() {
 
@@ -83,6 +84,7 @@ class PostProcessing: CliktCommand() {
 
         metricsModel = MetricsCalculator(ModelFilesConfig(config))
         sampleWriter = SampleWriter(output)
+        sampleWriter.open()
         runBlocking {
             val projects = getProjectDataPaths(dataset)
             projects.map {
@@ -91,7 +93,8 @@ class PostProcessing: CliktCommand() {
                 }
             }.awaitAll()
         }
-        // postprocess for one project
+        sampleWriter.close()
+        exitProcess(0)
     }
 
 
@@ -104,8 +107,9 @@ class PostProcessing: CliktCommand() {
     private suspend fun processProject(projectPath: String) {
         // From newest commit to oldest!
         val orderedSamples = readSamples(projectPath).sortedBy { -it.commitTime.toLong() }
+
         orderedSamples.forEach {
-                sample ->
+            sample ->
             if (sample.oldMethodName != sample.newMethodName) {
                 // we are iterating commit from new to old
                 methodBranchHandler.registerNameChange(oldName=sample.newMethodName, newName=sample.oldMethodName)
@@ -120,12 +124,12 @@ class PostProcessing: CliktCommand() {
                 val futureSample = methodBranchHandler.getInconsistencySample(branch)
                 methodBranchHandler.registerInconsistencySample(sample)
                 if (futureSample != null) {
-
                     val datasetSample = buildSample(
                         oldComment = sample.newComment,
                         newComment = futureSample.newComment,
                         oldCode = sample.newCode,
-                        newCode = futureSample.newCode
+                        newCode = futureSample.newCode,
+                        label = CommentUpdateLabel.INCONSISTENCY
                     )
                     writeMutex.withLock {
                         datasetSample?.let {
@@ -140,7 +144,8 @@ class PostProcessing: CliktCommand() {
                         oldComment = sample.oldComment,
                         newComment = sample.newComment,
                         oldCode = sample.oldCode,
-                        newCode = sample.newCode
+                        newCode = sample.newCode,
+                        label = CommentUpdateLabel.CONSISTENCY
                     )
                     writeMutex.withLock {
                         datasetSample?.let {
@@ -155,7 +160,9 @@ class PostProcessing: CliktCommand() {
         }
     }
 
-    private fun buildSample(oldComment: String, oldCode: String, newComment: String, newCode: String): DatasetSample? {
+    private fun buildSample(oldComment: String, oldCode: String, newComment: String, newCode: String,
+    label: CommentUpdateLabel
+    ): DatasetSample? {
         val metrics = methodMetrics(
             oldComment = oldComment, newComment = newComment,
             oldCode = oldCode, newCode = newCode
@@ -165,21 +172,22 @@ class PostProcessing: CliktCommand() {
             newComment = newComment,
             oldCode = oldCode,
             newCode = newCode,
-            metric = metrics
+            metric = metrics,
+            label = label
         )
     }
 
     private fun methodMetrics(oldComment: String, newComment: String, oldCode: String, newCode: String): MethodMetric?{
         val oldMockContent = """
-        class Mock {
-            $oldCode
-        }
-    """.trimIndent()
+            class Mock {
+                $oldCode
+            }
+        """.trimIndent()
         val newMockContent = """
-        class Mock {
-            $newCode
-        }
-    """.trimIndent()
+            class Mock {
+                $newCode
+            }
+        """.trimIndent()
 
         val refactorings = RefactoringExtractor.extract(oldMockContent, newMockContent).toMutableList()
         return metricsModel.calculateMetrics(oldCode, newCode, oldComment, newComment, refactorings)
@@ -191,6 +199,7 @@ class PostProcessing: CliktCommand() {
         if (textDataset.length == 2) {
             return emptyList()
         }
+
         // You have to delete one last comma manually, to open json file :)
         val fixedDataset = textDataset.dropLast(2) + "]"
         return klaxon.parseArray<RawDatasetSample>(fixedDataset) ?: emptyList()
