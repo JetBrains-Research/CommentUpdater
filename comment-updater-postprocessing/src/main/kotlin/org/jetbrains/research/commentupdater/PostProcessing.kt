@@ -10,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.research.commentupdater.SampleWriter
+import org.jetbrains.research.commentupdater.StatisticHandler
 import org.jetbrains.research.commentupdater.dataset.CommentUpdateLabel
 import org.jetbrains.research.commentupdater.dataset.DatasetSample
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
@@ -75,24 +76,60 @@ class PostProcessing: CliktCommand() {
     private val methodBranchHandler = MethodBranchHandler()
     private lateinit var sampleWriter: SampleWriter
     private val writeMutex = Mutex()
+    private val statisticHandler = StatisticHandler()
 
     private val dataset by argument("Path to dataset").file(canBeFile = false, mustExist = true)
     private val output by argument("Path to output file").file()
     private val config by argument("Path to Model config").file(mustExist = true, canBeFile = false)
+
+    companion object {
+        enum class LogLevel {
+            INFO, WARN, ERROR
+        }
+
+        var projectTag: String = ""
+        var projectProcess: String = ""
+
+        fun log(
+            level: LogLevel, message: String, logThread: Boolean = false,
+            applicationTag: String = "[PostProcessingCommentUpdater]"
+        ) {
+            val fullLogMessage =
+                "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $projectProcess] $message"
+
+            when (level) {
+                LogLevel.INFO -> {
+                    println(fullLogMessage)
+                }
+                LogLevel.WARN -> {
+                    System.err.println(fullLogMessage)
+                }
+                LogLevel.ERROR -> {
+                    System.err.println(fullLogMessage)
+                }
+            }
+        }
+    }
 
     override fun run() {
 
         metricsModel = MetricsCalculator(ModelFilesConfig(config))
         sampleWriter = SampleWriter(output)
         sampleWriter.open()
+        log(LogLevel.INFO, "Starting postprocessing")
         runBlocking {
             val projects = getProjectDataPaths(dataset)
+            statisticHandler.numOfProjects = projects.size
+
             projects.map {
                 async(Dispatchers.Default) {
                     processProject(it)
+                    statisticHandler.processedProjects.incrementAndGet()
+                    log(LogLevel.INFO, "Processed ${statisticHandler.processedSamples}")
                 }
             }.awaitAll()
         }
+        log(LogLevel.INFO, "Finished postprocessing. ${statisticHandler.report()}")
         sampleWriter.close()
         exitProcess(0)
     }
@@ -136,6 +173,7 @@ class PostProcessing: CliktCommand() {
                             sampleWriter.writeSample(it)
                         }
                     }
+                    statisticHandler.inconsistenciesCounter.incrementAndGet()
                 }
             } else if(codeChanged) {
                 if (!methodBranchHandler.isConsistencySpoiled(branch)) {
@@ -152,11 +190,14 @@ class PostProcessing: CliktCommand() {
                             sampleWriter.writeSample(it)
                         }
                     }
+                    statisticHandler.consistenciesCounter.incrementAndGet()
                 }
             } else if (commentChanged) {
                 // Should mark older comments as spoiled
                 methodBranchHandler.setBranchStatus(branch, isSpoiled = true)
             }
+
+            statisticHandler.processedSamples.incrementAndGet()
         }
     }
 
