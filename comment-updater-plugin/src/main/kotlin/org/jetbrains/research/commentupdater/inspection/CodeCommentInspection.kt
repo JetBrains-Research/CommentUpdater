@@ -27,7 +27,6 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
         LOG.info("[CommentUpdater] Inspection started")
 
         // Extract changes
-
         currentFile = session.file.name
         val changeListManager = ChangeListManager.getInstance(session.file.project)
         currentChanges = changeListManager.getChange(session.file.virtualFile)
