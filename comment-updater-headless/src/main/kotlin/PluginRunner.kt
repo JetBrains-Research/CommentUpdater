@@ -45,8 +45,10 @@ class CodeCommentExtractor : CliktCommand() {
     private val dataset by argument(help = "Path to dataset").file(mustExist = true, canBeDir = false)
     private val output by argument(help = "Output directory").file(canBeFile = false)
     private val config by argument(help = "Model config").file(canBeFile = false)
+    private val statsOutput by argument(help="Output file for statistic").file(canBeDir = false)
 
     lateinit var rawSampleWriter: RawSampleWriter
+    lateinit var statisticWriter: StatisticWriter
 
     private val statsHandler = StatisticHandler()
 
@@ -89,6 +91,8 @@ class CodeCommentExtractor : CliktCommand() {
         metricsModel = MetricsCalculator(ModelFilesConfig(config))
 
         rawSampleWriter = RawSampleWriter(output)
+        statisticWriter = StatisticWriter(statsOutput)
+        statisticWriter.open()
 
         val projectPaths = inputFile.readLines()
 
@@ -104,11 +108,20 @@ class CodeCommentExtractor : CliktCommand() {
 
                 collectProjectExamples(projectPath)
 
+                statisticWriter.saveStatistics(
+                    StatisticWriter.ProjectStatistic(
+                        projectTag,
+                        numOfMethods = statsHandler.numOfMethods.get(),
+                        numOfDocMethods = statsHandler.numOfDocMethods.get()
+                    )
+                )
+
                 onFinish()
             }
 
             projectTag = ""
             log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
+            statisticWriter.close()
             exitProcess(0)
         }
     }
@@ -119,7 +132,7 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     private fun onFinish() {
-        log(LogLevel.INFO, "Close project. ${statsHandler.report()}")
+        log(LogLevel.INFO, "Close project. ${statsHandler.reportSamples()}")
         rawSampleWriter.close()
         statsHandler.refresh()
     }
@@ -148,13 +161,16 @@ class CodeCommentExtractor : CliktCommand() {
         val runnable = {
             try {
                 val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
+                if (gitRoots.isEmpty()) {
+                    log(LogLevel.WARN, "Can't load git root for project $projectPath")
+                }
                 for (root in gitRoots) {
                     val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
                     runBlocking {
                         val commits = repo.walkAll()
                         statsHandler.numberOfCommits = commits.size
 
-                        commits.mapIndexed {  index, commit ->
+                        commits.map { commit ->
                             async(Dispatchers.Default) {
                                 processCommit(commit, project)
                             }
@@ -211,12 +227,17 @@ class CodeCommentExtractor : CliktCommand() {
         val newFileName = change.afterRevision?.file?.name ?: ""
 
         val refactorings = RefactoringExtractor.extract(change)
+        val methodsStatistic = hashMapOf<String, Int>()
         val changedMethods = try {
-            ProjectMethodExtractor.extractChangedMethods(project, change, refactorings)
+            ProjectMethodExtractor.extractChangedMethods(project, change, refactorings,
+                statisticContext = methodsStatistic)
         } catch (e: VcsException) {
             log(LogLevel.WARN, "Unexpected VCS exception: ${e.message}", logThread = true)
             null
         }
+
+        statsHandler.numOfMethods.addAndGet(methodsStatistic["numOfMethods"]!!)
+        statsHandler.numOfDocMethods.addAndGet(methodsStatistic["numOfDocMethods"]!!)
 
         changedMethods?.let {
             for ((oldMethod, newMethod) in it) {

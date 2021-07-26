@@ -18,7 +18,8 @@ object ProjectMethodExtractor {
     fun extractChangedMethods(
         project: Project,
         change: Change,
-        refactorings: List<Refactoring>
+        refactorings: List<Refactoring>,
+        statisticContext: HashMap<String, Int> = hashMapOf()
     ): MutableList<Pair<PsiMethod, PsiMethod>> {
         val before = change.beforeRevision?.content ?: return mutableListOf()
         val after = change.afterRevision?.content ?: return mutableListOf()
@@ -27,7 +28,7 @@ object ProjectMethodExtractor {
 
         val changedMethodPairs = mutableListOf<Pair<PsiMethod, PsiMethod>>()
 
-        val oldNamesToMethods = extractNamesToMethods(project, before)
+        val oldNamesToMethods = extractNamesToMethods(project, before, statisticContext)
 
         val newMethods = extractMethodsWithNames(project, after)
 
@@ -65,10 +66,16 @@ object ProjectMethodExtractor {
         return methodsWithNames
     }
 
-    private fun extractNamesToMethods(project: Project, content: String): HashMap<String, PsiMethod> {
+    private fun extractNamesToMethods(
+        project: Project,
+        content: String,
+        statisticContext: HashMap<String, Int> = hashMapOf()
+    ): HashMap<String, PsiMethod> {
         lateinit var psiFile: PsiFile
-        lateinit var methods: List<PsiMethod>
+        lateinit var docMethods: List<PsiMethod>
         lateinit var namesToMethods: HashMap<String, PsiMethod>
+        var numOfMethods: Int = 0
+        var numOfDocMethods: Int = 0
 
         ApplicationManager.getApplication().runReadAction {
             psiFile = PsiFileFactory.getInstance(project).createFileFromText(
@@ -77,14 +84,20 @@ object ProjectMethodExtractor {
                 content
             )
 
-            methods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
+            val methods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java)
+            numOfMethods = methods.size
+            docMethods = methods.filter {
                 it.docComment != null
             }
+            numOfDocMethods = docMethods.size
 
-            namesToMethods = hashMapOf(*methods.map {
+            namesToMethods = hashMapOf(*docMethods.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }.toTypedArray())
         }
+
+        statisticContext["numOfMethods"] = numOfMethods
+        statisticContext["numOfDocMethods"] = numOfDocMethods
 
         return namesToMethods
     }

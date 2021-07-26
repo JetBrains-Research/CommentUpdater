@@ -58,7 +58,7 @@ class MethodBranchHandler {
     }
 }
 
-class PostProcessingPlugin: ApplicationStarter {
+class PostProcessingPlugin : ApplicationStarter {
     override fun getCommandName(): String = "PostProcessing"
 
     override fun main(args: Array<String>) {
@@ -69,7 +69,7 @@ class PostProcessingPlugin: ApplicationStarter {
 }
 
 
-class PostProcessing: CliktCommand() {
+class PostProcessing : CliktCommand() {
 
     lateinit var metricsModel: MetricsCalculator
     private val klaxon = Klaxon()
@@ -145,11 +145,10 @@ class PostProcessing: CliktCommand() {
         // From newest commit to oldest!
         val orderedSamples = readSamples(projectPath).sortedBy { -it.commitTime.toLong() }
 
-        orderedSamples.forEach {
-            sample ->
+        orderedSamples.forEach { sample ->
             if (sample.oldMethodName != sample.newMethodName) {
                 // we are iterating commit from new to old
-                methodBranchHandler.registerNameChange(oldName=sample.newMethodName, newName=sample.oldMethodName)
+                methodBranchHandler.registerNameChange(oldName = sample.newMethodName, newName = sample.oldMethodName)
             }
 
             val commentChanged = sample.oldComment.trim() != sample.newComment.trim()
@@ -166,7 +165,8 @@ class PostProcessing: CliktCommand() {
                         newComment = futureSample.newComment,
                         oldCode = sample.newCode,
                         newCode = futureSample.newCode,
-                        label = CommentUpdateLabel.INCONSISTENCY
+                        label = CommentUpdateLabel.INCONSISTENCY,
+                        projectName = projectPath.split(File.separator).last().split('.').first()
                     )
                     writeMutex.withLock {
                         datasetSample?.let {
@@ -175,7 +175,7 @@ class PostProcessing: CliktCommand() {
                     }
                     statisticHandler.inconsistenciesCounter.incrementAndGet()
                 }
-            } else if(codeChanged) {
+            } else if (codeChanged) {
                 if (!methodBranchHandler.isConsistencySpoiled(branch)) {
                     // consistency example
                     val datasetSample = buildSample(
@@ -183,7 +183,8 @@ class PostProcessing: CliktCommand() {
                         newComment = sample.newComment,
                         oldCode = sample.oldCode,
                         newCode = sample.newCode,
-                        label = CommentUpdateLabel.CONSISTENCY
+                        label = CommentUpdateLabel.CONSISTENCY,
+                        projectName = projectPath.split(File.separator).last().split('.').first()
                     )
                     writeMutex.withLock {
                         datasetSample?.let {
@@ -201,8 +202,10 @@ class PostProcessing: CliktCommand() {
         }
     }
 
-    private fun buildSample(oldComment: String, oldCode: String, newComment: String, newCode: String,
-    label: CommentUpdateLabel
+    private fun buildSample(
+        projectName: String,
+        oldComment: String, oldCode: String, newComment: String, newCode: String,
+        label: CommentUpdateLabel
     ): DatasetSample? {
         val metrics = methodMetrics(
             oldComment = oldComment, newComment = newComment,
@@ -214,11 +217,12 @@ class PostProcessing: CliktCommand() {
             oldCode = oldCode,
             newCode = newCode,
             metric = metrics,
-            label = label
+            label = label,
+            project = projectName
         )
     }
 
-    private fun methodMetrics(oldComment: String, newComment: String, oldCode: String, newCode: String): MethodMetric?{
+    private fun methodMetrics(oldComment: String, newComment: String, oldCode: String, newCode: String): MethodMetric? {
         val oldMockContent = """
             class Mock {
                 $oldCode

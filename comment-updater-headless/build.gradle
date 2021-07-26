@@ -14,7 +14,7 @@ task runCommentUpdater(dependsOn: runIde) {}
 
 gradle.taskGraph.whenReady { graph ->
     if (graph.hasTask(runCommentUpdater)) {
-        runIde.args "CommentUpdater", "$dataset", "$output", "$config"
+        runIde.args "CommentUpdater", "$dataset", "$output", "$config", "$statsOutput"
         runIde.jvmArgs "-Djava.awt.headless=true"
         runIde.maxHeapSize = "20g"
     }

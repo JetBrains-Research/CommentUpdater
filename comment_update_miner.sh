@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [ $# -ne "3" ]; then
-    echo "usage: ./comment_update_miner.sh <path to project list file> <path to output folder> <path to model config>"
+if [ $# -ne "4" ]; then
+    echo "usage: ./comment_update_miner.sh <path to project list file> <path to output folder> <path to model config> <path to statistic output>"
     exit 1
 fi
 
@@ -14,4 +14,4 @@ fi
 
 "$DIR/gradlew" --stop
 "$DIR/gradlew" clean
-"$DIR/gradlew" -p "$DIR" runCommentUpdater -Pdataset="$PWD/$1" -Poutput="$PWD/$2" -Pconfig="$PWD/$3"
+"$DIR/gradlew" -p "$DIR" runCommentUpdater -Pdataset="$PWD/$1" -Poutput="$PWD/$2" -Pconfig="$PWD/$3" -PstatsOutput="$PWD/$4"

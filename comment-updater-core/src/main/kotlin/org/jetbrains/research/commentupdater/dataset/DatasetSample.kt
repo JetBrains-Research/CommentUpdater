@@ -29,6 +29,7 @@ enum class CommentUpdateLabel {
 }
 
 data class DatasetSample(
+    val project: String,
     val oldCode: String,
     val newCode: String,
     val oldComment: String,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [ $# -ne "4" ]; then
-    echo "usage: ./comment_inconsistency_miner.sh <path to project list file> <path to output folder> <path to model config> <path to dataset output file>"
+if [ $# -ne "5" ]; then
+    echo "usage: ./comment_inconsistency_miner.sh <path to project list file> <path to output folder> <path to model config> <path to dataset output file> <path to stats output file>"
     exit 1
 fi
 
@@ -13,5 +13,5 @@ if uname -s | grep -iq cygwin ; then
 fi
 
 
-sh ./comment_update_miner.sh "$1" "$2" "$3"
+sh ./comment_update_miner.sh "$1" "$2" "$3" "$5"
 sh ./postprocessing.sh "$2" "$4" "$3"
