@@ -1,12 +1,17 @@
 package org.jetbrains.research.commentupdater.inspection
 
-import com.intellij.codeInspection.*
-import com.intellij.openapi.vcs.changes.Change
+import CommentUpdaterBundle
+import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.LocalInspectionToolSession
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
-import com.intellij.psi.*
+import com.intellij.psi.JavaElementVisitor
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.javadoc.PsiDocComment
-import gr.uom.java.xmi.diff.*
+import gr.uom.java.xmi.diff.RenameOperationRefactoring
 import org.jetbrains.research.commentupdater.JITDetector
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor

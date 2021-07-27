@@ -1,6 +1,8 @@
 package org.jetbrains.research.commentupdater.processors
 
-import com.intellij.psi.*
+import com.intellij.psi.PsiComment
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.javadoc.PsiDocTag
 import com.intellij.psi.javadoc.PsiDocToken
 import com.intellij.psi.util.PsiTreeUtil
@@ -10,12 +12,12 @@ object CodeCommentTokenizer {
     private val COMMENT_TAGS = listOf("@return", "@ return", "@param", "@ param", "@throws", "@ throws")
 
     fun subTokenizeComment(comment: String): List<String> {
-        val commentWithoutStars = comment.filter{it != '/' && it != '*'}
+        val commentWithoutStars = comment.filter { it != '/' && it != '*' }
         if (commentWithoutStars.trim().startsWith("@return")) {
-            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag = true)
         }
         if (commentWithoutStars.trim().startsWith("@param")) {
-            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag = true)
         }
         return subTokenizeText(commentWithoutStars, removeTag = false)
     }
@@ -26,12 +28,12 @@ object CodeCommentTokenizer {
     }
 
     fun tokenizeComment(comment: String): List<String> {
-        val commentWithoutStars = comment.filter{it != '/' && it != '*'}
+        val commentWithoutStars = comment.filter { it != '/' && it != '*' }
         if (commentWithoutStars.trim().startsWith("@return")) {
-            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag = true)
         }
         if (commentWithoutStars.trim().startsWith("@param")) {
-            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag = true)
         }
         return tokenizeText(commentWithoutStars, removeTag = false)
     }
@@ -47,7 +49,7 @@ object CodeCommentTokenizer {
 
         return Regex("[a-zA-Z0-9]+|[^\\sa-zA-Z0-9]|[^_\\sa-zA-Z0-9]")
             .findAll(cleanedText)
-            .map{
+            .map {
                 it.groupValues[0]
             }.toList()
 
@@ -93,7 +95,7 @@ object CodeCommentTokenizer {
             processedTokens.addAll(
                 Regex("[a-zA-Z0-9]+|[^\\sa-zA-Z0-9]|[^_\\sa-zA-Z0-9]")
                     .findAll(token)
-                    .map{
+                    .map {
                         it.groupValues[0]
                     }.toList()
             )
@@ -107,8 +109,10 @@ object CodeCommentTokenizer {
 
     fun extractMethodCode(method: PsiMethod): String {
         return method.children.filter {
-            !PsiTreeUtil.instanceOf(it, PsiComment::class.java, PsiWhiteSpace::class.java,
-                PsiDocTag::class.java, PsiDocToken::class.java)
+            !PsiTreeUtil.instanceOf(
+                it, PsiComment::class.java, PsiWhiteSpace::class.java,
+                PsiDocTag::class.java, PsiDocToken::class.java
+            )
         }.map {
             it.text
         }.joinToString(" ")

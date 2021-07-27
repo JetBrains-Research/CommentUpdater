@@ -6,10 +6,8 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
-import com.intellij.openapi.vcs.impl.ProjectLevelVcsManagerImpl
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.repo.GitRepositoryManager
@@ -28,8 +26,6 @@ import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.PsiUtil
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import java.util.concurrent.CountDownLatch
-import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 
@@ -47,7 +43,7 @@ class CodeCommentExtractor : CliktCommand() {
     private val dataset by argument(help = "Path to dataset").file(mustExist = true, canBeDir = false)
     private val output by argument(help = "Output directory").file(canBeFile = false)
     private val config by argument(help = "Model config").file(canBeFile = false)
-    private val statsOutput by argument(help="Output file for statistic").file(canBeDir = false)
+    private val statsOutput by argument(help = "Output file for statistic").file(canBeDir = false)
 
     lateinit var rawSampleWriter: RawSampleWriter
     lateinit var statisticWriter: StatisticWriter
@@ -152,7 +148,7 @@ class CodeCommentExtractor : CliktCommand() {
             GitRepositoryManager::class.java
         )
 
-        try{
+        try {
             val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
             for (root in gitRoots) {
                 val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
@@ -213,8 +209,10 @@ class CodeCommentExtractor : CliktCommand() {
         val refactorings = RefactoringExtractor.extract(change)
         val methodsStatistic = hashMapOf<String, Int>()
         val changedMethods = try {
-            ProjectMethodExtractor.extractChangedMethods(project, change, refactorings,
-                statisticContext = methodsStatistic)
+            ProjectMethodExtractor.extractChangedMethods(
+                project, change, refactorings,
+                statisticContext = methodsStatistic
+            )
         } catch (e: VcsException) {
             log(LogLevel.WARN, "Unexpected VCS exception: ${e.message}", logThread = true)
             null
@@ -246,12 +244,13 @@ class CodeCommentExtractor : CliktCommand() {
                     continue
                 }
 
-                if(!MethodChangesExtractor.checkMethodChanged(
+                if (!MethodChangesExtractor.checkMethodChanged(
                         oldComment = oldComment,
                         newComment = newComment,
                         oldCode = oldCode,
                         newCode = newCode
-                )) {
+                    )
+                ) {
                     continue
                 }
 

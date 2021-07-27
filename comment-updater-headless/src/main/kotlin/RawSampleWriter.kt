@@ -29,7 +29,8 @@ class RawSampleWriter(output: File) {
         projectWriter.close()
     }
 
-    fun saveMetrics(rawSample: RawDatasetSample
+    fun saveMetrics(
+        rawSample: RawDatasetSample
     ) {
         val jsonSample = gson.toJson(rawSample)
 

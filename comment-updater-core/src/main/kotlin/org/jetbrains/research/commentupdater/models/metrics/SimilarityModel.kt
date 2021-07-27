@@ -24,8 +24,10 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
             ?: throw Exception("can't load embeddings")
 
         env = OrtEnvironment.getEnvironment()
-        codeEmbeddingsSession = env.createSession(modelPathsConfig.CODE_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
-        commentEmbeddingSession = env.createSession(modelPathsConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
+        codeEmbeddingsSession =
+            env.createSession(modelPathsConfig.CODE_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
+        commentEmbeddingSession =
+            env.createSession(modelPathsConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
     }
 
     /**
@@ -50,20 +52,17 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
         // Multiply embeddingA * embeddingB and then normalize by rows and columns
         // By multiplying with normalization matrices from left and right
         // cosSim = Norm1 * (E1 * E2.T) * Norm2
-        val cosSimMatrix = normMatrixA.multiply(embeddingMatrixA.multiply(embeddingMatrixB.transpose())).multiply(normMatrixB)
+        val cosSimMatrix =
+            normMatrixA.multiply(embeddingMatrixA.multiply(embeddingMatrixB.transpose())).multiply(normMatrixB)
 
         // Liu2018 similarity definition
-        val simS1S2 = (0 until tokensA.size).sumOf {
-            i ->
-            (0 until tokensB.size).maxOf {
-                j ->
+        val simS1S2 = (0 until tokensA.size).sumOf { i ->
+            (0 until tokensB.size).maxOf { j ->
                 cosSimMatrix.get(i.toLong(), j.toLong())
             }
         } / tokensA.size
-        val simS2S1 = (0 until tokensB.size).sumOf {
-                j ->
-            (0 until tokensA.size).maxOf {
-                    i ->
+        val simS2S1 = (0 until tokensB.size).sumOf { j ->
+            (0 until tokensA.size).maxOf { i ->
                 cosSimMatrix.get(i.toLong(), j.toLong())
             }
         } / tokensB.size

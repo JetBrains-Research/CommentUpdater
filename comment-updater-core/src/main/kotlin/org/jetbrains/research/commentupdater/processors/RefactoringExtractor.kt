@@ -1,11 +1,10 @@
 package org.jetbrains.research.commentupdater.processors
 
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.VcsException
+import com.intellij.openapi.vcs.changes.Change
 import gr.uom.java.xmi.UMLModelASTReader
 import gr.uom.java.xmi.diff.*
-import org.jetbrains.annotations.Nullable
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import java.nio.file.Files.createFile

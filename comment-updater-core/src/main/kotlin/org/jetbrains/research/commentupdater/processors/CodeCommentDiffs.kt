@@ -41,28 +41,30 @@ object CodeCommentDiffs {
     val COPY_SEQUENCE = "<COPY_SEQUENCE>"
 
     val REPLACE_KEYWORDS = listOf(
-    REPLACE,
-    REPLACE_OLD,
-    REPLACE_NEW,
-    REPLACE_END,
-    REPLACE_OLD_KEEP_BEFORE,
-    REPLACE_NEW_KEEP_BEFORE,
-    REPLACE_OLD_KEEP_AFTER,
-    REPLACE_NEW_KEEP_AFTER,
-    REPLACE_OLD_DELETE_KEEP_BEFORE,
-    REPLACE_NEW_DELETE_KEEP_BEFORE,
-    REPLACE_OLD_DELETE_KEEP_AFTER,
-    REPLACE_NEW_DELETE_KEEP_AFTER)
+        REPLACE,
+        REPLACE_OLD,
+        REPLACE_NEW,
+        REPLACE_END,
+        REPLACE_OLD_KEEP_BEFORE,
+        REPLACE_NEW_KEEP_BEFORE,
+        REPLACE_OLD_KEEP_AFTER,
+        REPLACE_NEW_KEEP_AFTER,
+        REPLACE_OLD_DELETE_KEEP_BEFORE,
+        REPLACE_NEW_DELETE_KEEP_BEFORE,
+        REPLACE_OLD_DELETE_KEEP_AFTER,
+        REPLACE_NEW_DELETE_KEEP_AFTER
+    )
 
     val INSERT_KEYWORDS = listOf(
-    INSERT,
-    INSERT_OLD,
-    INSERT_NEW,
-    INSERT_END,
-    INSERT_OLD_KEEP_BEFORE,
-    INSERT_NEW_KEEP_BEFORE,
-    INSERT_OLD_KEEP_AFTER,
-    INSERT_NEW_KEEP_AFTER)
+        INSERT,
+        INSERT_OLD,
+        INSERT_NEW,
+        INSERT_END,
+        INSERT_OLD_KEEP_BEFORE,
+        INSERT_NEW_KEEP_BEFORE,
+        INSERT_OLD_KEEP_AFTER,
+        INSERT_NEW_KEEP_AFTER
+    )
 
     val DELETE_KEYWORDS = listOf(DELETE, DELETE_END)
     val KEEP_KEYWORDS = listOf(KEEP, KEEP_END)
@@ -93,7 +95,7 @@ object CodeCommentDiffs {
 
     fun getCoarseDiffStructure(oldTokens: List<String>, newTokens: List<String>): List<EditNode> {
         val nodes = mutableListOf<EditNode>()
-        for(delta in DiffUtils.diff(oldTokens, newTokens, true).deltas) {
+        for (delta in DiffUtils.diff(oldTokens, newTokens, true).deltas) {
             val editNode = when (delta.type) {
                 DeltaType.EQUAL -> EditNode(
                     KEEP,
@@ -148,12 +150,11 @@ object CodeCommentDiffs {
 
         val possiblePositions = fullSequence
             .withIndex()
-            .filter {
-                (_, token) -> token == searchSequence[0]
+            .filter { (_, token) ->
+                token == searchSequence[0]
             }
             .map { it.index }
-        return possiblePositions.filter {
-            position ->
+        return possiblePositions.filter { position ->
             searchSequence.withIndex().all {
                 (position + it.index < fullSequence.size) && (fullSequence[position + it.index] == it.value)
             }
@@ -266,8 +267,9 @@ object CodeCommentDiffs {
                             ) == 1
                         }
                         if (foundSubString) {
-                            val newChildren = listOf<String>(REPLACE_OLD_KEEP_BEFORE) + adoptedChildren + repOldChildren +
-                                    listOf<String>(REPLACE_NEW_KEEP_BEFORE) + adoptedChildren + repNewChildren
+                            val newChildren =
+                                listOf<String>(REPLACE_OLD_KEEP_BEFORE) + adoptedChildren + repOldChildren +
+                                        listOf<String>(REPLACE_NEW_KEEP_BEFORE) + adoptedChildren + repNewChildren
                             val newNode = EditNode(REPLACE, newChildren.toMutableList(), node.prev, node.next)
                             node.prev!!.next = newNode
                             if (node.next != null) {
@@ -282,7 +284,7 @@ object CodeCommentDiffs {
                 }
 
                 if (node.next != null) {
-                    if(node.next!!.editType == KEEP) {
+                    if (node.next!!.editType == KEEP) {
                         val adoptedChildren = mutableListOf<String>()
                         var foundSubString = false
                         while (!foundSubString and !node.next!!.children.isEmpty()) {
@@ -297,7 +299,7 @@ object CodeCommentDiffs {
                             val newChildren = listOf(REPLACE_OLD_KEEP_AFTER) + repOldChildren + adoptedChildren +
                                     listOf(REPLACE_NEW_KEEP_AFTER) + repNewChildren + adoptedChildren
                             val newNode = EditNode(REPLACE, newChildren.toMutableList(), node.prev, node.next)
-                            if(node.prev != null) {
+                            if (node.prev != null) {
                                 node.prev!!.next = newNode
                             }
 
@@ -310,7 +312,7 @@ object CodeCommentDiffs {
                         }
                     }
                 }
-                return  getFullReplaceSpan(oldTokens, newTokens)
+                return getFullReplaceSpan(oldTokens, newTokens)
             } else if (node.editType == INSERT) {
                 if (node.prev != null) {
                     if (node.prev!!.editType == KEEP) {
@@ -379,18 +381,21 @@ object CodeCommentDiffs {
             }
         }
         return spans
-     }
+    }
 
     fun getFullReplaceSpan(oldTokens: List<String>, newTokens: List<String>): List<String> {
         return listOf(REPLACE_OLD) + oldTokens + listOf(REPLACE_NEW) + newTokens + listOf(REPLACE_END)
     }
 
 
-    fun computeCodeDiffs(oldTokens: List<String>, newTokens: List<String>): Triple<List<String>, List<String>, List<String>> {
+    fun computeCodeDiffs(
+        oldTokens: List<String>,
+        newTokens: List<String>
+    ): Triple<List<String>, List<String>, List<String>> {
         val spans = mutableListOf<String>()
         val tokens = mutableListOf<String>()
         val commands = mutableListOf<String>()
-        for(delta in DiffUtils.diff(oldTokens, newTokens, true).deltas) {
+        for (delta in DiffUtils.diff(oldTokens, newTokens, true).deltas) {
             when (delta.type) {
                 DeltaType.EQUAL -> {
                     spans.addAll(listOf(KEEP) + delta.source.lines + listOf(KEEP_END))
@@ -400,7 +405,11 @@ object CodeCommentDiffs {
                     }
                 }
                 DeltaType.CHANGE -> {
-                    spans.addAll(listOf(REPLACE_OLD) + delta.source.lines + listOf(REPLACE_NEW) + delta.target.lines + listOf(REPLACE_END))
+                    spans.addAll(
+                        listOf(REPLACE_OLD) + delta.source.lines + listOf(REPLACE_NEW) + delta.target.lines + listOf(
+                            REPLACE_END
+                        )
+                    )
                     for (token in delta.source.lines) {
                         tokens.addAll(listOf(REPLACE_OLD, token))
                         commands.add(REPLACE_OLD)

@@ -7,7 +7,7 @@ plugins {
 group = "org.jetbrains.research.commentupdater"
 version = "1.0"
 
-allprojects{
+allprojects {
     apply {
         plugin 'java'
         plugin 'org.jetbrains.intellij'

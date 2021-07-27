@@ -3,7 +3,7 @@ package org.jetbrains.research.commentupdater.dataset
 import com.beust.klaxon.Json
 import org.jetbrains.research.commentupdater.models.MethodMetric
 
-data class RawDatasetSample (
+data class RawDatasetSample(
     @Json
     val oldCode: String,
     @Json
@@ -21,7 +21,8 @@ data class RawDatasetSample (
     @Json
     val commitTime: String,
     @Json
-    val newFileName: String)
+    val newFileName: String
+)
 
 enum class CommentUpdateLabel {
     INCONSISTENCY,

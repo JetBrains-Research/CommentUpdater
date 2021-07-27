@@ -33,8 +33,10 @@ data class MethodMetric(
 class MetricsCalculator(config: ModelFilesConfig) {
     val simModel: SimilarityModel = SimilarityModel(config)
 
-    fun calculateMetrics(oldCode: String, newCode: String, oldComment: String, newComment: String,
-    methodRefactorings: MutableList<Refactoring> = mutableListOf()): MethodMetric? {
+    fun calculateMetrics(
+        oldCode: String, newCode: String, oldComment: String, newComment: String,
+        methodRefactorings: MutableList<Refactoring> = mutableListOf()
+    ): MethodMetric? {
 
         var isRenamed = false
         var isParamAdded = false
@@ -67,8 +69,7 @@ class MetricsCalculator(config: ModelFilesConfig) {
             }
         }
 
-        val filterSubTokens = {
-            subToken: String ->
+        val filterSubTokens = { subToken: String ->
             val hasLetters: Boolean = subToken.any { it.isLetter() }
             hasLetters
         }

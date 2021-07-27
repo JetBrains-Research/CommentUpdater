@@ -1,9 +1,7 @@
 import com.google.gson.Gson
-import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import java.io.File
 import java.io.FileWriter
 import java.io.Writer
-
 
 
 class StatisticWriter(val output: File) {

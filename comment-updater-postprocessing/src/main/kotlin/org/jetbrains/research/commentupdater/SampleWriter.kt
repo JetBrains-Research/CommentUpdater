@@ -1,8 +1,8 @@
 package org.jetbrains.research.commentupdater
 
+import com.google.gson.Gson
 import org.jetbrains.research.commentupdater.dataset.DatasetSample
 import java.io.File
-import com.google.gson.Gson
 import java.io.FileWriter
 import java.io.Writer
 

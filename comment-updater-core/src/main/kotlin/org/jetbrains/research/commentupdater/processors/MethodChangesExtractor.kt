@@ -5,7 +5,9 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
-import com.intellij.psi.*
+import com.intellij.psi.JavaRecursiveElementVisitor
+import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.javadoc.PsiDocComment
 import org.jetbrains.research.commentupdater.CodeCommentDiffs
 import org.jetbrains.research.commentupdater.utils.qualifiedName
@@ -15,8 +17,7 @@ object MethodChangesExtractor {
         Logger.getInstance(javaClass)
 
     fun checkMethodChanged(oldComment: String, oldCode: String, newComment: String, newCode: String): Boolean {
-        val filterSubTokens = {
-                subToken: String ->
+        val filterSubTokens = { subToken: String ->
             val hasLetters: Boolean = subToken.any { it.isLetter() }
             hasLetters
         }
@@ -74,7 +75,6 @@ object MethodChangesExtractor {
         }
         return null
     }
-
 
 
     fun getOldMethod(method: PsiMethod): PsiMethod? {

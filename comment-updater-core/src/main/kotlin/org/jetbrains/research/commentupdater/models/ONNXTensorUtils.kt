@@ -15,7 +15,7 @@ object ONNXTensorUtils {
         val arrayData = Array(data.size) {
             LongArray(data[0].size)
         }
-        for(i in 0 until data.size) {
+        for (i in 0 until data.size) {
             for (j in 0 until data[0].size) {
                 arrayData[i][j] = data[i][j]
             }
@@ -27,7 +27,7 @@ object ONNXTensorUtils {
         if (data.isEmpty())
             throw Exception("Can't handle empty lists")
         val arrayData = LongArray(data.size)
-        for(i in 0 until data.size) {
+        for (i in 0 until data.size) {
             arrayData[i] = data[i]
         }
         return OnnxTensor.createTensor(environment, arrayData)
@@ -41,7 +41,7 @@ object ONNXTensorUtils {
                 FloatArray(data[0][0].size)
             }
         }
-        for(i in 0 until data.size) {
+        for (i in 0 until data.size) {
             for (j in 0 until data[0].size) {
                 for (k in 0 until data[0][0].size) {
                     arrayData[i][j][k] = data[i][j][k]

@@ -8,10 +8,10 @@ import com.beust.klaxon.Klaxon
 import com.beust.klaxon.KlaxonException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.PsiMethod
-import org.jetbrains.research.commentupdater.models.jit.JITModelFeatureExtractor
 import org.jetbrains.research.commentupdater.models.ONNXTensorUtils
 import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
+import org.jetbrains.research.commentupdater.models.jit.JITModelFeatureExtractor
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import java.io.File
 import java.lang.Integer.min
@@ -143,8 +143,7 @@ class JITDetector {
         )
 
         var probability: Float = 0f
-        session.run(inputs).use {
-                results ->
+        session.run(inputs).use { results ->
             val modelOut = results[0] as OnnxTensor
             val zeroSoftmax = kotlin.math.exp(modelOut.floatBuffer[0])
             val oneSoftmax = kotlin.math.exp(modelOut.floatBuffer[1])
