@@ -102,14 +102,21 @@ class CodeCommentExtractor : CliktCommand() {
         // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
 
         projectPaths.forEachIndexed { index, projectPath ->
-            sampleWriter.setProjectFile(projectPath)
-            projectTag = sampleWriter.projectName
+            rawSampleWriter.setProjectFile(projectPath)
+            projectTag = rawSampleWriter.projectName
             projectProcess = "${index + 1}/${projectPaths.size}"
 
             onStart()
 
             collectProjectExamples(projectPath)
 
+            statisticWriter.saveStatistics(
+                StatisticWriter.ProjectStatistic(
+                    projectName = projectTag,
+                    numOfMethods = statsHandler.numOfMethods.get(),
+                    numOfDocMethods = statsHandler.numOfDocMethods.get()
+                )
+            )
             onFinish()
         }
 
