@@ -121,6 +121,7 @@ class CodeCommentExtractor : CliktCommand() {
         }
 
         projectTag = ""
+        statisticWriter.close()
         log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
         exitProcess(0)
 
