@@ -39,6 +39,3 @@ allprojects{
         plugins 'git4idea', 'java'
     }
 }
-
-
-

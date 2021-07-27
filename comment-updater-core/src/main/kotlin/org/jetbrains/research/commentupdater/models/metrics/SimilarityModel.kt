@@ -43,7 +43,6 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
         val embeddingMatrixA = buildEmbeddingMatrix(tokensA, vocab, embeddings)
         val normMatrixA = getNormMatrix(tokensA.size.toLong(), embeddingMatrixA)
 
-
         val embeddingMatrixB = buildEmbeddingMatrix(tokensB, vocab, embeddings)
         val normMatrixB = getNormMatrix(tokensB.size.toLong(), embeddingMatrixB)
 
@@ -119,7 +118,6 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
         }
         return embeddingMatrix
     }
-
 
     fun getIdOrUnk(token: String, vocab: MutableMap<String, Int>): Int {
         return vocab[token] ?: vocab.getOrDefault(embeddingConfig.unknownToken, 0)

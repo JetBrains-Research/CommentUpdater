@@ -25,11 +25,13 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import org.jetbrains.research.commentupdater.utils.PsiUtil
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
+
 
 class PluginRunner : ApplicationStarter {
     override fun getCommandName(): String = "CommentUpdater"
@@ -98,32 +100,23 @@ class CodeCommentExtractor : CliktCommand() {
 
         // You want to launch your processing work in different thread,
         // because runnable inside runAfterInitialization is executed after mappings and after this main method ends
-        thread(start = true) {
-            projectPaths.forEachIndexed { index, projectPath ->
-                rawSampleWriter.setProjectFile(projectPath)
-                projectTag = rawSampleWriter.projectName
-                projectProcess = "${index + 1}/${projectPaths.size}"
 
-                onStart()
+        projectPaths.forEachIndexed { index, projectPath ->
+            sampleWriter.setProjectFile(projectPath)
+            projectTag = sampleWriter.projectName
+            projectProcess = "${index + 1}/${projectPaths.size}"
 
-                collectProjectExamples(projectPath)
+            onStart()
 
-                statisticWriter.saveStatistics(
-                    StatisticWriter.ProjectStatistic(
-                        projectTag,
-                        numOfMethods = statsHandler.numOfMethods.get(),
-                        numOfDocMethods = statsHandler.numOfDocMethods.get()
-                    )
-                )
+            collectProjectExamples(projectPath)
 
-                onFinish()
-            }
-
-            projectTag = ""
-            log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
-            statisticWriter.close()
-            exitProcess(0)
+            onFinish()
         }
+
+        projectTag = ""
+        log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
+        exitProcess(0)
+
     }
 
     private fun onStart() {
@@ -144,49 +137,32 @@ class CodeCommentExtractor : CliktCommand() {
             return
         }
 
-        val vcsManager = ServiceManager.getService(
-            project,
-            ProjectLevelVcsManager::class.java
-        ) as ProjectLevelVcsManagerImpl
+        val vcsManager = PsiUtil.vcsSetup(project, projectPath)
 
         val gitRepoManager = ServiceManager.getService(
             project,
             GitRepositoryManager::class.java
         )
 
-        // Checkout https://intellij-support.jetbrains.com/hc/en-us/community/posts/206105769-Get-project-git-repositories-in-a-project-component
-        // To understand why we should call runAfterInitialization and create this runnable
+        try{
+            val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
+            for (root in gitRoots) {
+                val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
+                runBlocking {
+                    val commits = repo.walkAll()
+                    statsHandler.numberOfCommits = commits.size
 
-        val latch = CountDownLatch(1)
-        val runnable = {
-            try {
-                val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
-                if (gitRoots.isEmpty()) {
-                    log(LogLevel.WARN, "Can't load git root for project $projectPath")
+                    commits.map { commit ->
+                        async(Dispatchers.Default) {
+                            processCommit(commit, project)
+                        }
+                    }.awaitAll()
                 }
-                for (root in gitRoots) {
-                    val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
-                    runBlocking {
-                        val commits = repo.walkAll()
-                        statsHandler.numberOfCommits = commits.size
 
-                        commits.map { commit ->
-                            async(Dispatchers.Default) {
-                                processCommit(commit, project)
-                            }
-                        }.awaitAll()
-                    }
-
-                }
-            } catch (e: Exception) {
-                log(LogLevel.ERROR, "Failed with an exception: ${e.message}")
-            } finally {
-                latch.countDown()
             }
+        } catch (e: Exception) {
+            log(LogLevel.ERROR, "Failed with an exception: ${e.message}")
         }
-
-        vcsManager.runAfterInitialization(runnable)
-        latch.await()
     }
 
     private suspend fun processCommit(

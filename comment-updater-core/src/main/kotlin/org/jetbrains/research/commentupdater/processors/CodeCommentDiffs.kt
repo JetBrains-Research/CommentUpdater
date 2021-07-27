@@ -94,7 +94,7 @@ object CodeCommentDiffs {
     fun getCoarseDiffStructure(oldTokens: List<String>, newTokens: List<String>): List<EditNode> {
         val nodes = mutableListOf<EditNode>()
         for(delta in DiffUtils.diff(oldTokens, newTokens, true).deltas) {
-            val editNode = when(delta.type) {
+            val editNode = when (delta.type) {
                 DeltaType.EQUAL -> EditNode(
                     KEEP,
                     delta.source.lines,
@@ -142,7 +142,7 @@ object CodeCommentDiffs {
         val searchSequence = searchString.split(' ')
         val fullSequence = fullString.split(' ')
 
-        if(searchSequence.isEmpty()) {
+        if (searchSequence.isEmpty()) {
             return listOf()
         }
 
