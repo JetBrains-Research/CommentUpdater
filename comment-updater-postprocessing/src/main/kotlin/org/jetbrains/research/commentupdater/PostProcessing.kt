@@ -3,6 +3,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.file
 import com.intellij.openapi.application.ApplicationStarter
+import com.intellij.openapi.diagnostic.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -70,7 +71,6 @@ class PostProcessingPlugin : ApplicationStarter {
 
 
 class PostProcessing : CliktCommand() {
-
     lateinit var metricsModel: MetricsCalculator
     private val klaxon = Klaxon()
     private val methodBranchHandler = MethodBranchHandler()
@@ -83,6 +83,9 @@ class PostProcessing : CliktCommand() {
     private val config by argument("Path to Model config").file(mustExist = true, canBeFile = false)
 
     companion object {
+        private val LOG: Logger =
+            Logger.getInstance(PostProcessing::class.java)
+
         enum class LogLevel {
             INFO, WARN, ERROR
         }
@@ -96,7 +99,6 @@ class PostProcessing : CliktCommand() {
         ) {
             val fullLogMessage =
                 "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $projectProcess] $message"
-
             when (level) {
                 LogLevel.INFO -> {
                     println(fullLogMessage)
@@ -116,6 +118,7 @@ class PostProcessing : CliktCommand() {
         metricsModel = MetricsCalculator(ModelFilesConfig(config))
         sampleWriter = SampleWriter(output)
         sampleWriter.open()
+        LOG.info("Logging startup")
         log(LogLevel.INFO, "Starting postprocessing")
         runBlocking {
             val projects = getProjectDataPaths(dataset)

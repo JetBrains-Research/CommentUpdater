@@ -5,6 +5,7 @@ import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.components.ServiceManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
@@ -53,6 +54,9 @@ class CodeCommentExtractor : CliktCommand() {
     private lateinit var metricsModel: MetricsCalculator
 
     companion object {
+        private val LOG: Logger =
+            Logger.getInstance(PluginRunner::class.java)
+
         enum class LogLevel {
             INFO, WARN, ERROR
         }
@@ -82,6 +86,7 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     override fun run() {
+        LOG.info("Logging startup")
         log(LogLevel.INFO, "Starting Application")
 
         val inputFile = dataset

@@ -14,4 +14,11 @@ fi
 
 
 sh ./comment_update_miner.sh "$1" "$2" "$3" "$5"
+
+# copy headless logs
+cp ./comment-updater-headless/build/idea-sandbox/system/log/idea.log ./headless.log
+
 sh ./postprocessing.sh "$2" "$4" "$3"
+
+# copy postprocessing logs
+cp ./comment-updater-postprocessing/build/idea-sandbox/system/log/idea.log ./postprocessing.log
