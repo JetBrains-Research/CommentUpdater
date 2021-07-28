@@ -27,7 +27,9 @@ data class MethodMetric(
     val newOldCodeCommentSimDistance: Double,
     val oldChangedCommentSim: Double,
     val newChangedCommentSim: Double,
-    val oldNewChangedSimDist: Double
+    val oldNewChangedSimDist: Double,
+    val addedStatementSize: Int,
+    val deletedStatementSize: Int
 )
 
 class MetricsCalculator(config: ModelFilesConfig) {
@@ -144,7 +146,6 @@ class MetricsCalculator(config: ModelFilesConfig) {
             it.first in listOf(CodeCommentDiffs.REPLACE_NEW, CodeCommentDiffs.INSERT)
         }.map { it.second }
 
-        // todo: add removedStatements.size as a feature
         val oldChangedCommentSim = if (removedStatements.isNotEmpty()) {
             simModel.compute(
                 removedStatements,
@@ -186,7 +187,9 @@ class MetricsCalculator(config: ModelFilesConfig) {
             newOldCodeCommentSimDistance = newOldCodeCommentSimDistance,
             oldChangedCommentSim = oldChangedCommentSim,
             newChangedCommentSim = newChangedCommentSim,
-            oldNewChangedSimDist = oldNewChangedSimDist
+            oldNewChangedSimDist = oldNewChangedSimDist,
+            addedStatementSize = addedStatements.size,
+            deletedStatementSize = removedStatements.size
         )
     }
 }
