@@ -135,7 +135,6 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     private fun onStart() {
-        log(LogLevel.INFO, "Open project")
         rawSampleWriter.open()
     }
 
@@ -146,7 +145,9 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     private fun collectProjectExamples(projectPath: String) {
+        log(LogLevel.INFO, "Opening project...")
         val project = ProjectUtil.openOrImport(projectPath, null, true)
+        log(LogLevel.INFO, "Opened!")
         if (project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
             return
