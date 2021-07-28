@@ -181,9 +181,9 @@ class PostProcessing : CliktCommand() {
                     writeMutex.withLock {
                         datasetSample?.let {
                             sampleWriter.writeSample(it)
+                            statisticHandler.inconsistenciesCounter.incrementAndGet()
                         }
                     }
-                    statisticHandler.inconsistenciesCounter.incrementAndGet()
                 }
             } else if (codeChanged) {
                 if (!methodBranchHandler.isConsistencySpoiled(branch)) {
@@ -202,9 +202,9 @@ class PostProcessing : CliktCommand() {
                     writeMutex.withLock {
                         datasetSample?.let {
                             sampleWriter.writeSample(it)
+                            statisticHandler.consistenciesCounter.incrementAndGet()
                         }
                     }
-                    statisticHandler.consistenciesCounter.incrementAndGet()
                 }
             } else if (commentChanged) {
                 // Should mark older comments as spoiled
