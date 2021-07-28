@@ -108,18 +108,18 @@ class CodeCommentExtractor : CliktCommand() {
             projectProcess = "${index + 1}/${projectPaths.size}"
 
             try {
-                onStart()
+                //onStart()
 
                 collectProjectExamples(projectPath)
 
-                statisticWriter.saveStatistics(
-                    StatisticWriter.ProjectStatistic(
-                        projectName = projectTag,
-                        numOfMethods = statsHandler.numOfMethods.get(),
-                        numOfDocMethods = statsHandler.numOfDocMethods.get()
-                    )
-                )
-                onFinish()
+//                statisticWriter.saveStatistics(
+//                    StatisticWriter.ProjectStatistic(
+//                        projectName = projectTag,
+//                        numOfMethods = statsHandler.numOfMethods.get(),
+//                        numOfDocMethods = statsHandler.numOfDocMethods.get()
+//                    )
+//                )
+//                onFinish()
             } catch (e: Exception) {
                 log(LogLevel.ERROR, "Failed to process project $projectTag due to $e")
             }
@@ -129,7 +129,7 @@ class CodeCommentExtractor : CliktCommand() {
 
         projectTag = ""
         statisticWriter.close()
-        log(LogLevel.INFO, "Finished with ${statsHandler.totalExamplesNumber.get()} examples found.")
+        log(LogLevel.INFO, "Finished with ${statsHandler.openedRepos} opened.")
         exitProcess(0)
 
     }
@@ -165,20 +165,25 @@ class CodeCommentExtractor : CliktCommand() {
         try {
             val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
             log(LogLevel.INFO, "Found ${gitRoots.size} roots for $projectTag")
-            for (root in gitRoots) {
-                val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
-                runBlocking {
-                    val commits = repo.walkAll()
-                    statsHandler.numberOfCommits = commits.size
 
-                    commits.map { commit ->
-                        async(Dispatchers.Default) {
-                            processCommit(commit, project)
-                        }
-                    }.awaitAll()
-                }
-
+            if (gitRoots.isNotEmpty()) {
+                statsHandler.openedRepos ++
             }
+
+//            for (root in gitRoots) {
+//                val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
+//                runBlocking {
+//                    val commits = repo.walkAll()
+//                    statsHandler.numberOfCommits = commits.size
+//
+//                    commits.map { commit ->
+//                        async(Dispatchers.Default) {
+//                            processCommit(commit, project)
+//                        }
+//                    }.awaitAll()
+//                }
+//
+//            }
         } catch (e: Exception) {
             log(LogLevel.ERROR, "Failed with an exception: ${e.message}")
         }

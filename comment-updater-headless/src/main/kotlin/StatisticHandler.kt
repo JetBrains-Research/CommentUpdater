@@ -15,6 +15,8 @@ class StatisticHandler {
     var totalExamplesNumber = AtomicInteger(0)
     var numberOfCommits = 0
 
+    var openedRepos = 0
+
 
     fun reportSamples(): String {
         return "Found ${foundExamples.get()} examples," +
