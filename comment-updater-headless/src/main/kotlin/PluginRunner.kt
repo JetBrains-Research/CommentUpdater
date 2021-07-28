@@ -160,7 +160,10 @@ class CodeCommentExtractor : CliktCommand() {
         )
 
         try {
+
+            log(LogLevel.INFO, "Finding roots for $projectTag")
             val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
+            log(LogLevel.INFO, "Found ${gitRoots.size} roots for $projectTag")
             for (root in gitRoots) {
                 val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
                 runBlocking {
