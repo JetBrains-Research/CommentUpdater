@@ -6,10 +6,12 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.impl.ProjectLevelVcsManagerImpl
+import com.intellij.serviceContainer.AlreadyDisposedException
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.repo.GitRepositoryManager
@@ -126,6 +128,18 @@ class CodeCommentExtractor : CliktCommand() {
         statsHandler.refresh()
     }
 
+    /**
+     * Function to close project. The close should be forced to avoid physical changes to data.
+     * TODO: Avoid using extended API (check if available in community version)
+     */
+    fun closeProject(project: Project) =
+        try {
+            ProjectManagerEx.getInstanceEx().forceCloseProject(project)
+        } catch (e: AlreadyDisposedException) {
+            // TODO: figure out why this happened
+            println(e.message)
+        }
+
     private fun collectProjectExamples(projectPath: String) {
         val project = ProjectUtil.openOrImport(projectPath, null, true)
         if (project == null) {
@@ -158,6 +172,8 @@ class CodeCommentExtractor : CliktCommand() {
             }
         } catch (e: Exception) {
             log(LogLevel.ERROR, "Failed with an exception: ${e.message}")
+        } finally {
+            closeProject(project)
         }
     }
 
