@@ -31,10 +31,13 @@ enum class CommentUpdateLabel {
 
 data class DatasetSample(
     val project: String,
+    val oldCommit: String,
+    val newCommit: String,
     val oldCode: String,
     val newCode: String,
     val oldComment: String,
     val newComment: String,
     val metric: MethodMetric,
+    val newFileName: String,
     val label: CommentUpdateLabel
 )

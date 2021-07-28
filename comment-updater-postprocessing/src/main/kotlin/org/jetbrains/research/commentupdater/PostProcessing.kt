@@ -166,7 +166,10 @@ class PostProcessing : CliktCommand() {
                         oldCode = sample.newCode,
                         newCode = futureSample.newCode,
                         label = CommentUpdateLabel.INCONSISTENCY,
-                        projectName = projectPath.split(File.separator).last().split('.').first()
+                        projectName = projectPath.split(File.separator).last().split('.').first(),
+                        oldCommit = sample.commitId,
+                        newCommit = futureSample.commitId,
+                        newFileName = sample.newFileName
                     )
                     writeMutex.withLock {
                         datasetSample?.let {
@@ -184,7 +187,10 @@ class PostProcessing : CliktCommand() {
                         oldCode = sample.oldCode,
                         newCode = sample.newCode,
                         label = CommentUpdateLabel.CONSISTENCY,
-                        projectName = projectPath.split(File.separator).last().split('.').first()
+                        projectName = projectPath.split(File.separator).last().split('.').first(),
+                        oldCommit = sample.commitId,
+                        newCommit = "",
+                        newFileName = sample.newFileName
                     )
                     writeMutex.withLock {
                         datasetSample?.let {
@@ -203,7 +209,8 @@ class PostProcessing : CliktCommand() {
     }
 
     private fun buildSample(
-        projectName: String,
+        projectName: String, oldCommit: String, newCommit: String,
+        newFileName: String,
         oldComment: String, oldCode: String, newComment: String, newCode: String,
         label: CommentUpdateLabel
     ): DatasetSample? {
@@ -218,7 +225,10 @@ class PostProcessing : CliktCommand() {
             newCode = newCode,
             metric = metrics,
             label = label,
-            project = projectName
+            project = projectName,
+            oldCommit = oldCommit,
+            newCommit = newCommit,
+            newFileName = newFileName
         )
     }
 
