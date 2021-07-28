@@ -113,7 +113,7 @@ class CodeCommentExtractor : CliktCommand() {
                 //onStart()
 
                 collectProjectExamples(projectPath)
-
+                log(LogLevel.INFO, "$projectProcess, and opened ${statsHandler.openedRepos}")
 //                statisticWriter.saveStatistics(
 //                    StatisticWriter.ProjectStatistic(
 //                        projectName = projectTag,
