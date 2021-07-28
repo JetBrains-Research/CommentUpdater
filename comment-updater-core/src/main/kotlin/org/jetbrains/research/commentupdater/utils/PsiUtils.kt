@@ -29,7 +29,10 @@ object PsiUtil {
     fun vcsSetup(project: Project?, projectPath: String?): ProjectLevelVcsManagerImpl {
         VfsUtil.markDirtyAndRefresh(false, true, false, File(projectPath))
         val vcsManager = ProjectLevelVcsManager.getInstance(project!!) as ProjectLevelVcsManagerImpl
-        ApplicationManager.getApplication().invokeAndWait(vcsManager::waitForInitialized);
+
+        //ApplicationManager.getApplication().invokeAndWait(vcsManager::waitForInitialized);
+        vcsManager.waitForInitialized()
+        Thread.sleep(10000)
         val vcs = GitVcs.getInstance(project)
         try {
             vcs.doActivate()
