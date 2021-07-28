@@ -17,6 +17,7 @@ class RawSampleWriter(output: File) {
     fun setProjectFile(projectPath: String) {
         projectName = projectPath.split('/').last()
         projectFile = File(outputPath).resolve("${projectName}.json")
+        projectFile.createNewFile()
         projectWriter = FileWriter(projectFile, true)
     }
 

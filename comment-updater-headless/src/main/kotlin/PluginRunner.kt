@@ -107,18 +107,24 @@ class CodeCommentExtractor : CliktCommand() {
             projectTag = rawSampleWriter.projectName
             projectProcess = "${index + 1}/${projectPaths.size}"
 
-            onStart()
+            try {
+                onStart()
 
-            collectProjectExamples(projectPath)
+                collectProjectExamples(projectPath)
 
-            statisticWriter.saveStatistics(
-                StatisticWriter.ProjectStatistic(
-                    projectName = projectTag,
-                    numOfMethods = statsHandler.numOfMethods.get(),
-                    numOfDocMethods = statsHandler.numOfDocMethods.get()
+                statisticWriter.saveStatistics(
+                    StatisticWriter.ProjectStatistic(
+                        projectName = projectTag,
+                        numOfMethods = statsHandler.numOfMethods.get(),
+                        numOfDocMethods = statsHandler.numOfDocMethods.get()
+                    )
                 )
-            )
-            onFinish()
+                onFinish()
+            } catch (e: Exception) {
+                log(LogLevel.ERROR, "Failed to process project $projectTag due to $e")
+            }
+
+
         }
 
         projectTag = ""

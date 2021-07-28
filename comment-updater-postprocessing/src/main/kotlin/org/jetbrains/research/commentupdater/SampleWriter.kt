@@ -17,6 +17,7 @@ class SampleWriter(output: File) {
 
     fun open() {
         outputFile = File(outputPath)
+        outputFile.createNewFile()
         writer = FileWriter(outputFile)
         writer.write("[")
     }

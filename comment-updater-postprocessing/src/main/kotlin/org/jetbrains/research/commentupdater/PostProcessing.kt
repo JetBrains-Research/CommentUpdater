@@ -126,9 +126,13 @@ class PostProcessing : CliktCommand() {
 
             projects.map {
                 async(Dispatchers.Default) {
-                    processProject(it)
-                    statisticHandler.processedProjects.incrementAndGet()
-                    log(LogLevel.INFO, "Processed ${statisticHandler.processedSamples}")
+                    try {
+                        processProject(it)
+                        statisticHandler.processedProjects.incrementAndGet()
+                        log(LogLevel.INFO, "Processed ${statisticHandler.processedSamples}")
+                    } catch(e: Exception) {
+                        log(LogLevel.WARN, "Failed to process project $it due to $e")
+                    }
                 }
             }.awaitAll()
         }
