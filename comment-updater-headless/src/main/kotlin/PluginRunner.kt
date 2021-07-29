@@ -14,10 +14,7 @@ import com.intellij.serviceContainer.AlreadyDisposedException
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.repo.GitRepositoryManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
@@ -29,6 +26,7 @@ import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.PsiUtil
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import java.util.concurrent.*
 import kotlin.system.exitProcess
 
 
@@ -160,12 +158,41 @@ class CodeCommentExtractor : CliktCommand() {
 
     private fun collectProjectExamples(projectPath: String) {
         log(LogLevel.INFO, "Opening project...")
-        val project = ProjectUtil.openOrImport(projectPath, null, true)
-        log(LogLevel.INFO, "Opened!")
+        val callable: Callable<Project?> = Callable {
+            ProjectUtil.openOrImport(projectPath, null, true)
+        }
+
+        val executor = Executors.newSingleThreadExecutor()
+        val future = executor.submit(callable)
+        executor.shutdown() // This does not cancel the already-scheduled task.
+
+
+        val project = try {
+            future.get(5, TimeUnit.MINUTES)
+        } catch (ie: InterruptedException) {
+            /* Handle the interruption. Or ignore it. */
+            log(LogLevel.WARN, "Project opening failed, interrupted $ie")
+            null
+        } catch (ee: ExecutionException) {
+            /* Handle the error. Or ignore it. */
+            log(LogLevel.WARN, "Project opening failed with error $ee")
+            null
+        } catch (te: TimeoutException) {
+            /* Handle the timeout. Or ignore it. */
+            log(LogLevel.WARN, "Project opening failed with timeout")
+            null
+        }
+        if (!executor.isTerminated) {
+            // If you want to stop the code that hasn't finished.
+            log(LogLevel.WARN, "Project opening canceled due to timeout")
+            executor.shutdownNow()
+        }
+
         if (project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
             return
         }
+        log(LogLevel.INFO, "Opened!")
 
         log(LogLevel.INFO, "Initializing vcs..")
         val vcsManager = PsiUtil.vcsSetup(project, projectPath)
