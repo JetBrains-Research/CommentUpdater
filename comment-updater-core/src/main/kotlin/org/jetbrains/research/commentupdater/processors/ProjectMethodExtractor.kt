@@ -8,6 +8,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
+import org.apache.commons.lang.ObjectUtils
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
 import org.refactoringminer.api.Refactoring
 
@@ -20,13 +21,13 @@ object ProjectMethodExtractor {
         change: Change,
         refactorings: List<Refactoring>,
         statisticContext: HashMap<String, Int> = hashMapOf()
-    ): MutableList<Pair<PsiMethod, PsiMethod>> {
-        val before = change.beforeRevision?.content ?: return mutableListOf()
+    ): MutableList<Triple<PsiMethod, PsiMethod, Boolean>> {
+        val before = change.beforeRevision?.content ?: ""
         val after = change.afterRevision?.content ?: return mutableListOf()
 
         val renameMapping = RefactoringUtils.extractNameChanges(refactorings)
 
-        val changedMethodPairs = mutableListOf<Pair<PsiMethod, PsiMethod>>()
+        val changedMethodPairs = mutableListOf<Triple<PsiMethod, PsiMethod, Boolean>>()
 
         val oldNamesToMethods = extractNamesToMethods(project, before, statisticContext)
 
@@ -38,9 +39,15 @@ object ProjectMethodExtractor {
             } else {
                 afterName
             }
-            oldNamesToMethods.get(beforeName)?.let { oldMethod ->
-                changedMethodPairs.add(oldMethod to newMethod)
+
+            if (!oldNamesToMethods.containsKey(beforeName)) {
+                changedMethodPairs.add(Triple(newMethod, newMethod, true))
             }
+
+            oldNamesToMethods[beforeName]?.let { oldMethod ->
+                changedMethodPairs.add(Triple(oldMethod, newMethod, false))
+            }
+
         }
         return changedMethodPairs
     }
@@ -56,9 +63,7 @@ object ProjectMethodExtractor {
                 content
             )
 
-            methodsWithNames = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
-                it.docComment != null
-            }.map {
+            methodsWithNames = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }
         }
@@ -72,7 +77,6 @@ object ProjectMethodExtractor {
         statisticContext: HashMap<String, Int> = hashMapOf()
     ): HashMap<String, PsiMethod> {
         lateinit var psiFile: PsiFile
-        lateinit var docMethods: List<PsiMethod>
         lateinit var namesToMethods: HashMap<String, PsiMethod>
         var numOfMethods: Int = 0
         var numOfDocMethods: Int = 0
@@ -86,12 +90,12 @@ object ProjectMethodExtractor {
 
             val methods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java)
             numOfMethods = methods.size
-            docMethods = methods.filter {
-                it.docComment != null
-            }
-            numOfDocMethods = docMethods.size
 
-            namesToMethods = hashMapOf(*docMethods.map {
+            numOfDocMethods = methods.filter {
+                it.docComment != null
+            }.size
+
+            namesToMethods = hashMapOf(*methods.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
             }.toTypedArray())
         }
