@@ -253,7 +253,7 @@ class CodeCommentExtractor : CliktCommand() {
         statsHandler.numOfDocMethods.addAndGet(methodsStatistic["numOfDocMethods"]!!)
 
         changedMethods?.let {
-            for ((oldMethod, newMethod) in it) {
+            for ((oldMethod, newMethod, isNew) in it) {
                 statsHandler.processedMethods.incrementAndGet()
                 lateinit var newMethodName: String
                 lateinit var oldMethodName: String
@@ -264,10 +264,27 @@ class CodeCommentExtractor : CliktCommand() {
 
                 ApplicationManager.getApplication().runReadAction {
                     newMethodName = newMethod.qualifiedName
-                    oldMethodName = oldMethod.qualifiedName
-                    oldCode = oldMethod.textWithoutDoc
+
+                    oldMethodName = if (!isNew) {
+                        oldMethod.qualifiedName
+                    } else {
+                        ""
+                    }
+
+                    oldCode = if (!isNew) {
+                        oldMethod.textWithoutDoc
+                    } else {
+                        ""
+                    }
+
                     newCode = newMethod.textWithoutDoc
-                    oldComment = oldMethod.docComment?.text ?: ""
+
+                    oldComment = if (!isNew) {
+                        oldMethod.docComment?.text ?: ""
+                    } else {
+                        ""
+                    }
+
                     newComment = newMethod.docComment?.text ?: ""
                 }
 
