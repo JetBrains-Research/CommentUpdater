@@ -79,10 +79,10 @@ class CodeCommentExtractor : CliktCommand() {
                     println(fullLogMessage)
                 }
                 LogLevel.WARN -> {
-                    //System.err.println(fullLogMessage)
+                    System.err.println(fullLogMessage)
                 }
                 LogLevel.ERROR -> {
-                    //System.err.println(fullLogMessage)
+                    System.err.println(fullLogMessage)
                 }
             }
         }
