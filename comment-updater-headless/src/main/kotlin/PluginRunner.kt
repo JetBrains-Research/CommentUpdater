@@ -110,8 +110,6 @@ class CodeCommentExtractor : CliktCommand() {
             projectProcess = "${index + 1}/${projectPaths.size}"
 
             try {
-                onStart()
-
                 collectProjectExamples(projectPath)
 
                 statisticWriter.saveStatistics(
@@ -136,9 +134,6 @@ class CodeCommentExtractor : CliktCommand() {
 
     }
 
-    private fun onStart() {
-        rawSampleWriter.open()
-    }
 
     private fun onFinish() {
         log(LogLevel.INFO, "Close project. ${statsHandler.reportSamples()}")
