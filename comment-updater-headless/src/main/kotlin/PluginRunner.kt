@@ -17,6 +17,7 @@ import git4idea.repo.GitRepositoryManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.eclipse.jgit.lib.Repository
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
@@ -27,6 +28,11 @@ import org.jetbrains.research.commentupdater.utils.PsiUtil
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import java.util.concurrent.*
+import org.kohsuke.github.GHEventPayload
+import org.refactoringminer.api.Refactoring
+import org.refactoringminer.api.RefactoringHandler
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
+import org.refactoringminer.util.GitServiceImpl
 import kotlin.system.exitProcess
 
 
@@ -52,6 +58,10 @@ class CodeCommentExtractor : CliktCommand() {
     private val statsHandler = StatisticHandler()
 
     private lateinit var metricsModel: MetricsCalculator
+
+    private val gitService = GitServiceImpl()
+    private val miner = GitHistoryRefactoringMinerImpl()
+    lateinit var repo: Repository
 
     companion object {
         private val LOG: Logger =
@@ -107,6 +117,8 @@ class CodeCommentExtractor : CliktCommand() {
             rawSampleWriter.setProjectFile(projectPath)
             projectTag = rawSampleWriter.projectName
             projectProcess = "${index + 1}/${projectPaths.size}"
+
+            repo = gitService.openRepository(projectPath)
 
             try {
                 collectProjectExamples(projectPath)
@@ -200,16 +212,30 @@ class CodeCommentExtractor : CliktCommand() {
         project: Project
     ) {
         try {
+            lateinit var allRefactorings: List<Refactoring>
+
+            val handler = object : RefactoringHandler() {
+                override fun handle(commitId: String, refactorings: List<Refactoring>) {
+                    println("Refactorings at " + commitId);
+                    refactorings.forEach { ref ->
+                        println(ref.toString());
+                    }
+                    allRefactorings = refactorings
+                }
+            }
+
+            miner.detectAtCommit(repo, commit.id.toString(), handler)
+
             commit.filterChanges(".java").forEach { change ->
                 val fileName = change.afterRevision?.file?.name ?: ""
                 log(
                     LogLevel.INFO,
-                    "Commit: ${commit.id.toShortString()} num ~ ${statsHandler.processedCommits.get()}" +
+                    "Commit: ${commit.id} num ~ ${statsHandler.processedCommits.get()}" +
                             "/${statsHandler.numberOfCommits} File changed: $fileName",
                     logThread = true
                 )
 
-                collectChange(change, commit, project)
+                collectChange(change, commit, allRefactorings, project)
             }
             statsHandler.processedCommits.incrementAndGet()
         } catch (e: Exception) {
@@ -226,17 +252,18 @@ class CodeCommentExtractor : CliktCommand() {
     private suspend fun collectChange(
         change: Change,
         commit: GitCommit,
+        allRefactorings: List<Refactoring>,
         project: Project
     ) {
         statsHandler.processedFileChanges.incrementAndGet()
 
         val newFileName = change.afterRevision?.file?.name ?: ""
 
-        val refactorings = RefactoringExtractor.extract(change)
+        val fileRefactorings = RefactoringExtractor.extract(change)
         val methodsStatistic = hashMapOf<String, Int>()
         val changedMethods = try {
             ProjectMethodExtractor.extractChangedMethods(
-                project, change, refactorings,
+                project, change, allRefactorings, fileRefactorings,
                 statisticContext = methodsStatistic
             )
         } catch (e: VcsException) {
