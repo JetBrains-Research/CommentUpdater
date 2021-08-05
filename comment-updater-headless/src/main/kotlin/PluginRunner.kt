@@ -327,6 +327,7 @@ class CodeCommentExtractor : CliktCommand() {
                 statsHandler.foundExamples.incrementAndGet()
 
                 val datasetExample = RawDatasetSample(
+                    isNew = isNew,
                     oldCode = oldCode,
                     newCode = newCode,
                     oldComment = oldComment,
