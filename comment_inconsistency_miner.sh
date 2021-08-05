@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [ $# -ne "5" ]; then
-    echo "usage: ./comment_inconsistency_miner.sh <path to project list file> <path to output folder> <path to model config> <path to dataset output file> <path to stats output file>"
+    echo "usage: ./comment_inconsistency_miner.sh <path to project list file> <path to output folder> <path to model config> <path to dataset output file> <path to stats output file> <path to timeout logs>"
     exit 1
 fi
 
@@ -13,7 +13,7 @@ if uname -s | grep -iq cygwin ; then
 fi
 
 
-sh ./comment_update_miner.sh "$1" "$2" "$3" "$5"
+sh ./comment_update_miner.sh "$1" "$2" "$3" "$5" "$6"
 
 # copy headless logs
 cp ./comment-updater-headless/build/idea-sandbox/system/log/idea.log ./headless.log

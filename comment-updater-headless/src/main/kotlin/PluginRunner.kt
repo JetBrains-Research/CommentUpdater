@@ -26,7 +26,9 @@ import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.PsiUtil
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import java.io.File
 import java.util.concurrent.*
+import kotlin.math.log
 import kotlin.system.exitProcess
 
 
@@ -38,6 +40,30 @@ class PluginRunner : ApplicationStarter {
     }
 }
 
+class TimeOutHandler(val logFile: File) {
+    init {
+        logFile.createNewFile()
+        logFile.writeText("")
+    }
+
+    private val openingTag = "opening"
+    private val doneTag = "opened"
+
+    private fun extractProjectTag(projectPath: String): String {
+        return "[" + projectPath.split(File.separator).last() + "]"
+    }
+    fun startOpening(projectPath: String) {
+        logFile.writeText(extractProjectTag(projectPath) + " " + openingTag)
+    }
+    fun endOpening(projectPath: String) {
+        logFile.writeText(extractProjectTag(projectPath) + " " + doneTag)
+    }
+
+    fun exceptionalState() {
+        logFile.writeText("")
+    }
+}
+
 class CodeCommentExtractor : CliktCommand() {
     private val writeMutex = Mutex()
 
@@ -45,6 +71,7 @@ class CodeCommentExtractor : CliktCommand() {
     private val output by argument(help = "Output directory").file(canBeFile = false)
     private val config by argument(help = "Model config").file(canBeFile = false)
     private val statsOutput by argument(help = "Output file for statistic").file(canBeDir = false)
+    private val timeOutLogs by argument(help="Timeout state file").file(canBeDir = false)
 
     lateinit var rawSampleWriter: RawSampleWriter
     lateinit var statisticWriter: StatisticWriter
@@ -52,6 +79,8 @@ class CodeCommentExtractor : CliktCommand() {
     private val statsHandler = StatisticHandler()
 
     private lateinit var metricsModel: MetricsCalculator
+
+    private lateinit var timeOutHandler: TimeOutHandler
 
     companion object {
         private val LOG: Logger =
@@ -98,6 +127,8 @@ class CodeCommentExtractor : CliktCommand() {
         statisticWriter = StatisticWriter(statsOutput)
         statisticWriter.open()
 
+        timeOutHandler = TimeOutHandler(timeOutLogs)
+
         val projectPaths = inputFile.readLines()
 
         // You want to launch your processing work in different thread,
@@ -122,6 +153,7 @@ class CodeCommentExtractor : CliktCommand() {
                 )
                 onFinish()
             } catch (e: Exception) {
+                timeOutHandler.exceptionalState()
                 log(LogLevel.ERROR, "Failed to process project $projectTag due to $e")
             }
 
@@ -158,8 +190,17 @@ class CodeCommentExtractor : CliktCommand() {
         }
 
     private fun collectProjectExamples(projectPath: String) {
+
+        timeOutHandler.startOpening(projectPath)
         log(LogLevel.INFO, "Opening project...")
+        if (projectPath.endsWith("ex5"))
+        {
+            log(LogLevel.INFO, "Sleeping..")
+            Thread.sleep(1000 * 60);
+            log(LogLevel.INFO, "waking up..")
+        }
         val project = ProjectUtil.openOrImport(projectPath, null, true)
+        timeOutHandler.endOpening(projectPath)
 
         if (project == null) {
             log(LogLevel.WARN, "Can't open project $projectPath")
@@ -196,7 +237,9 @@ class CodeCommentExtractor : CliktCommand() {
         } catch (e: Exception) {
             log(LogLevel.ERROR, "Failed with an exception: ${e.message}")
         } finally {
+            log(LogLevel.INFO, "Closing...")
             closeProject(project)
+            log(LogLevel.INFO, "Closed!")
         }
     }
 
