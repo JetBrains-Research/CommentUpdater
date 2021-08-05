@@ -74,6 +74,7 @@ class CodeCommentExtractor : CliktCommand() {
             when (level) {
                 LogLevel.INFO -> {
                     println(fullLogMessage)
+                    System.out.flush()
                 }
                 LogLevel.WARN -> {
                     System.err.println(fullLogMessage)
