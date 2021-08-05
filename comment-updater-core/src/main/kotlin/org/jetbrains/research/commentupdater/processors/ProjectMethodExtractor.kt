@@ -7,10 +7,14 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiSubstitutor.EMPTY
 import com.intellij.psi.util.PsiTreeUtil
-import org.apache.commons.lang.ObjectUtils
+import gr.uom.java.xmi.diff.MoveOperationRefactoring
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
+import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.refactoringminer.api.Refactoring
+import org.refactoringminer.api.RefactoringType
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
 
 object ProjectMethodExtractor {
     /**
@@ -19,19 +23,21 @@ object ProjectMethodExtractor {
     fun extractChangedMethods(
         project: Project,
         change: Change,
-        refactorings: List<Refactoring>,
+        allRefactorings: List<Refactoring>,
+        fileRefactorings: List<Refactoring>,
         statisticContext: HashMap<String, Int> = hashMapOf()
     ): MutableList<Triple<PsiMethod, PsiMethod, Boolean>> {
         val before = change.beforeRevision?.content ?: ""
         val after = change.afterRevision?.content ?: return mutableListOf()
 
-        val renameMapping = RefactoringUtils.extractNameChanges(refactorings)
+        val renameMapping = RefactoringUtils.extractNameChanges(fileRefactorings)
 
         val changedMethodPairs = mutableListOf<Triple<PsiMethod, PsiMethod, Boolean>>()
 
         val oldNamesToMethods = extractNamesToMethods(project, before, statisticContext)
 
         val newMethods = extractMethodsWithNames(project, after)
+
 
         newMethods.forEach { (afterName, newMethod) ->
             val beforeName = if (renameMapping.containsKey(afterName)) {
@@ -41,7 +47,25 @@ object ProjectMethodExtractor {
             }
 
             if (!oldNamesToMethods.containsKey(beforeName)) {
-                changedMethodPairs.add(Triple(newMethod, newMethod, true))
+                var isNew = true
+
+                allRefactorings.filter { it.refactoringType == RefactoringType.MOVE_OPERATION || it.refactoringType == RefactoringType.MOVE_AND_RENAME_OPERATION }
+                    .forEach { ref ->
+                        val refactoring = (ref as MoveOperationRefactoring)
+                        val newFullName = refactoring.movedOperation.className + "." + refactoring.movedOperation.name
+
+                        var newMethodName = ""
+                        ApplicationManager.getApplication().runReadAction {
+                            newMethodName = newMethod.qualifiedName
+                        }
+
+                        if (newFullName == newMethodName) {
+                            isNew = false
+                        }
+
+                    }
+
+                changedMethodPairs.add(Triple(newMethod, newMethod, isNew))
             }
 
             oldNamesToMethods[beforeName]?.let { oldMethod ->
