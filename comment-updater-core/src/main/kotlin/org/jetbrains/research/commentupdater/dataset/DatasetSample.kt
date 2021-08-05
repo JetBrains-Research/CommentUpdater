@@ -5,6 +5,8 @@ import org.jetbrains.research.commentupdater.models.MethodMetric
 
 data class RawDatasetSample(
     @Json
+    val isNew: Boolean,
+    @Json
     val oldCode: String,
     @Json
     val newCode: String,
