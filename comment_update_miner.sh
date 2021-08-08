@@ -13,5 +13,7 @@ if uname -s | grep -iq cygwin ; then
 fi
 
 "$DIR/gradlew" --stop
-"$DIR/gradlew" clean
+"$DIR/gradlew" -p "$DIR" clean
+echo "DIR $DIR"
+echo "PWD $PWD"
 "$DIR/gradlew" -p "$DIR" runCommentUpdater -Prunner="CommentUpdater" -Pdataset="$PWD/$1" -Poutput="$PWD/$2" -Pconfig="$PWD/$3" -PstatsOutput="$PWD/$4" --stacktrace
