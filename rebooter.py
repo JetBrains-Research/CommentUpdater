@@ -82,19 +82,21 @@ def run(cmd, timeout, log_path):
 
 
 if __name__ == '__main__':
-    dataset_path = '/Users/Ivan.Pavlov/IdeaProjects/input.txt'
-    with open(dataset_path, 'r') as dataset_file:
-        dataset = dataset_file.read().strip().split('\n')
 
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         print("""
                 # args:
                 # <path to output folder>
                 # <path to model config>
                 # <path to statistic output>
                 # <path to timeout logs>
+                # <path to input dataset>
         """)
         exit(0)
+
+    dataset_path = os.path.join(os.curdir, sys.argv[5])
+    with open(dataset_path, 'r') as dataset_file:
+        dataset = dataset_file.read().strip().split('\n')
 
     # cmd = """
     #     echo "[HeadlessCommentUpdater] kek";
@@ -116,14 +118,13 @@ if __name__ == '__main__':
 
     log_path = os.path.join(os.curdir, sys.argv[4])
 
-    batch_size = 5
-    timeout = 3
+    batch_size = 20
+    timeout = 60 * 10
     script = "./comment_update_miner.sh"
     project_q = deque()
     project_q.extend(dataset)
     TOTAL = len(dataset)
     while project_q:
-        print(list(map(lambda x: x.split(os.sep)[-1], project_q)))
         batch = []
         while len(batch) < batch_size and len(project_q) > 0:
             batch.append(project_q.popleft())
