@@ -16,6 +16,7 @@ open class IOCliTask : org.jetbrains.intellij.tasks.RunIdeTask() {
     val output: String? by project
     val config: String? by project
     val statsOutput: String? by project
+    val timeOutLogs: String? by project
 
     init {
         jvmArgs = listOf(
@@ -35,10 +36,11 @@ tasks {
         dependsOn("buildPlugin")
         args = listOfNotNull(
             runner,
-            dataset?.let { it },
-            output?.let { it },
-            config?.let { it },
-            statsOutput?.let { it }
+            dataset,
+            output,
+            config,
+            statsOutput,
+            timeOutLogs
         )
     }
 }
