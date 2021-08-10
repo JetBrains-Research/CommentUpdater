@@ -14,21 +14,21 @@ import com.intellij.serviceContainer.AlreadyDisposedException
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.repo.GitRepositoryManager
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.eclipse.jgit.lib.Repository
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
-import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.PsiUtil
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import java.util.concurrent.*
-import org.kohsuke.github.GHEventPayload
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringHandler
 import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
@@ -52,8 +52,8 @@ class CodeCommentExtractor : CliktCommand() {
     private val config by argument(help = "Model config").file(canBeFile = false)
     private val statsOutput by argument(help = "Output file for statistic").file(canBeDir = false)
 
-    lateinit var rawSampleWriter: RawSampleWriter
-    lateinit var statisticWriter: StatisticWriter
+    private lateinit var rawSampleWriter: RawSampleWriter
+    private lateinit var statisticWriter: StatisticWriter
 
     private val statsHandler = StatisticHandler()
 
@@ -61,7 +61,7 @@ class CodeCommentExtractor : CliktCommand() {
 
     private val gitService = GitServiceImpl()
     private val miner = GitHistoryRefactoringMinerImpl()
-    lateinit var repo: Repository
+    private lateinit var repo: Repository
 
     companion object {
         private val LOG: Logger =
@@ -156,7 +156,7 @@ class CodeCommentExtractor : CliktCommand() {
      * Function to close project. The close should be forced to avoid physical changes to data.
      * TODO: Avoid using extended API (check if available in community version)
      */
-    fun closeProject(project: Project) =
+    private fun closeProject(project: Project) =
         try {
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)
         } catch (e: AlreadyDisposedException) {
@@ -216,9 +216,9 @@ class CodeCommentExtractor : CliktCommand() {
 
             val handler = object : RefactoringHandler() {
                 override fun handle(commitId: String, refactorings: List<Refactoring>) {
-                    println("Refactorings at " + commitId);
+                    println("Refactorings at $commitId")
                     refactorings.forEach { ref ->
-                        println(ref.toString());
+                        println(ref.toString())
                     }
                     allRefactorings = refactorings
                 }
@@ -275,68 +275,29 @@ class CodeCommentExtractor : CliktCommand() {
         statsHandler.numOfDocMethods.addAndGet(methodsStatistic["numOfDocMethods"]!!)
 
         changedMethods?.let {
-            for ((oldMethod, newMethod, isNew) in it) {
+            for ((newMethod, updateType) in it) {
                 statsHandler.processedMethods.incrementAndGet()
-                lateinit var newMethodName: String
-                lateinit var oldMethodName: String
-                lateinit var oldCode: String
-                lateinit var newCode: String
-                lateinit var oldComment: String
-                lateinit var newComment: String
+                lateinit var methodName: String
+                lateinit var code: String
+                lateinit var comment: String
 
                 ApplicationManager.getApplication().runReadAction {
-                    newMethodName = newMethod.qualifiedName
+                    methodName = newMethod.qualifiedName
+                    code = newMethod.textWithoutDoc
+                    comment = newMethod.docComment?.text ?: ""
 
-                    oldMethodName = if (!isNew) {
-                        oldMethod.qualifiedName
-                    } else {
-                        ""
-                    }
-
-                    oldCode = if (!isNew) {
-                        oldMethod.textWithoutDoc
-                    } else {
-                        ""
-                    }
-
-                    newCode = newMethod.textWithoutDoc
-
-                    oldComment = if (!isNew) {
-                        oldMethod.docComment?.text ?: ""
-                    } else {
-                        ""
-                    }
-
-                    newComment = newMethod.docComment?.text ?: ""
-                }
-
-                if (oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()) {
-                    continue
-                }
-
-                if (!MethodChangesExtractor.checkMethodChanged(
-                        oldComment = oldComment,
-                        newComment = newComment,
-                        oldCode = oldCode,
-                        newCode = newCode
-                    )
-                ) {
-                    continue
                 }
 
                 statsHandler.foundExamples.incrementAndGet()
 
                 val datasetExample = RawDatasetSample(
-                    isNew = isNew,
-                    oldCode = oldCode,
-                    newCode = newCode,
-                    oldComment = oldComment,
-                    newComment = newComment,
+                    update = updateType,
                     commitId = commit.id.toString(),
                     newFileName = newFileName,
                     commitTime = commit.timestamp.toString(),
-                    oldMethodName = oldMethodName,
-                    newMethodName = newMethodName
+                    code = code,
+                    comment = comment,
+                    methodName = methodName
                 )
 
                 writeMutex.withLock {

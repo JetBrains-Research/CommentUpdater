@@ -9,6 +9,7 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
 import gr.uom.java.xmi.diff.MoveOperationRefactoring
+import org.jetbrains.research.commentupdater.dataset.MethodUpdateType
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.refactoringminer.api.Refactoring
@@ -24,13 +25,13 @@ object ProjectMethodExtractor {
         allRefactorings: List<Refactoring>,
         fileRefactorings: List<Refactoring>,
         statisticContext: HashMap<String, Int> = hashMapOf()
-    ): MutableList<Triple<PsiMethod, PsiMethod, Boolean>> {
+    ): MutableList<Pair<PsiMethod, MethodUpdateType>> {
         val before = change.beforeRevision?.content ?: ""
         val after = change.afterRevision?.content ?: return mutableListOf()
 
         val renameMapping = RefactoringUtils.extractNameChanges(fileRefactorings)
 
-        val changedMethodPairs = mutableListOf<Triple<PsiMethod, PsiMethod, Boolean>>()
+        val changedMethods = mutableListOf<Pair<PsiMethod, MethodUpdateType>>()
 
         val oldNamesToMethods = extractNamesToMethods(project, before, statisticContext)
 
@@ -61,14 +62,20 @@ object ProjectMethodExtractor {
                         }
                     }
 
-                changedMethodPairs.add(Triple(newMethod, newMethod, isNew))
+                changedMethods.add(
+                    newMethod to if (isNew) {
+                        MethodUpdateType.ADD
+                    } else {
+                        MethodUpdateType.MOVE
+                    }
+                )
             }
 
             oldNamesToMethods[beforeName]?.let { oldMethod ->
-                changedMethodPairs.add(Triple(oldMethod, newMethod, false))
+                changedMethods.add(oldMethod to MethodUpdateType.CHANGE)
             }
         }
-        return changedMethodPairs
+        return changedMethods
     }
 
     private fun extractMethodsWithNames(project: Project, content: String): List<Pair<String, PsiMethod>> {
@@ -97,8 +104,8 @@ object ProjectMethodExtractor {
     ): HashMap<String, PsiMethod> {
         lateinit var psiFile: PsiFile
         lateinit var namesToMethods: HashMap<String, PsiMethod>
-        var numOfMethods: Int = 0
-        var numOfDocMethods: Int = 0
+        var numOfMethods = 0
+        var numOfDocMethods = 0
 
         ApplicationManager.getApplication().runReadAction {
             psiFile = PsiFileFactory.getInstance(project).createFileFromText(
