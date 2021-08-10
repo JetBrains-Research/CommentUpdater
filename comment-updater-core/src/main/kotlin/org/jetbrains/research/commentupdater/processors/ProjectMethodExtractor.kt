@@ -12,6 +12,7 @@ import gr.uom.java.xmi.diff.MoveOperationRefactoring
 import org.jetbrains.research.commentupdater.dataset.MethodUpdateType
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
+import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 
@@ -69,10 +70,26 @@ object ProjectMethodExtractor {
                         MethodUpdateType.MOVE
                     }
                 )
-            }
+            } else {
+                val oldMethod = oldNamesToMethods[beforeName]
 
-            oldNamesToMethods[beforeName]?.let { oldMethod ->
-                changedMethods.add(oldMethod to MethodUpdateType.CHANGE)
+                lateinit var newCode: String
+                lateinit var oldCode: String
+
+                ApplicationManager.getApplication().runReadAction {
+                    newCode = newMethod.textWithoutDoc
+                    oldCode = oldMethod!!.textWithoutDoc
+                }
+
+                if (oldCode.trim() != newCode.trim() && MethodChangesExtractor.checkMethodChanged(
+                        oldCode = oldCode,
+                        newCode = newCode,
+                        oldComment = "",
+                        newComment = ""
+                    )
+                ) {
+                    changedMethods.add(newMethod to MethodUpdateType.CHANGE)
+                }
             }
         }
         return changedMethods
