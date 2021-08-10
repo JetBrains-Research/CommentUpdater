@@ -53,7 +53,6 @@ object JITModelFeatureExtractor {
         "try", "void", "volatile", "while"
     )
 
-
     fun extractArguments(method: PsiMethod): List<Pair<String, String>> {
         return method.parameterList.parameters.map {
             it.type.presentableText to it.name
@@ -97,12 +96,13 @@ object JITModelFeatureExtractor {
             }.flatten(),
             "method_name" to method.name.tokens()
         )
-
     }
 
     fun getCodeFeatures(
-        spanSequence: List<String>, commentTokens: List<String>,
-        oldFeatures: HashMap<String, List<String>>, newFeatures: HashMap<String, List<String>>,
+        spanSequence: List<String>,
+        commentTokens: List<String>,
+        oldFeatures: HashMap<String, List<String>>,
+        newFeatures: HashMap<String, List<String>>,
         maxCodeLen: Int
     ): Array<IntArray> {
         val oldTypeSet = (oldFeatures["return_type"] ?: listOf()).toSet()
@@ -161,7 +161,6 @@ object JITModelFeatureExtractor {
                 }
                 it.value in JAVA_KEYWORDS -> {
                     features[it.index][9] = 1
-
                 }
                 it.value.all { !it.isLetterOrDigit() } -> {
                     // is operator
@@ -198,9 +197,8 @@ object JITModelFeatureExtractor {
             // it is hard, because code already spanned with edit tokens and so on
             // it isn't obvious to figure out, whether token was taken from new or old sequence
             // now we consider every subtoken as token
-            //features[it.index][17] = subTokenLabels[it.index]
-            //features[it.index][18] = subTokenIndices[it.index]
-
+            // features[it.index][17] = subTokenLabels[it.index]
+            // features[it.index][18] = subTokenIndices[it.index]
         }
         return features
     }
@@ -230,8 +228,11 @@ object JITModelFeatureExtractor {
     }
 
     fun getCommentFeatures(
-        oldCommentTokens: List<String>, oldCommentSubTokens: List<String>, tokenDiffCodeSubTokens: List<String>,
-        oldCodeFeatures: HashMap<String, List<String>>, newCodeFeatures: HashMap<String, List<String>>,
+        oldCommentTokens: List<String>,
+        oldCommentSubTokens: List<String>,
+        tokenDiffCodeSubTokens: List<String>,
+        oldCodeFeatures: HashMap<String, List<String>>,
+        newCodeFeatures: HashMap<String, List<String>>,
         maxCommentLen: Int
     ): Array<IntArray> {
         val duplicates = oldCommentSubTokens.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.toSet()

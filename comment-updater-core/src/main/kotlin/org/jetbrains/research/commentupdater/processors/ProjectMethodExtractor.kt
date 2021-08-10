@@ -7,14 +7,12 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiSubstitutor.EMPTY
 import com.intellij.psi.util.PsiTreeUtil
 import gr.uom.java.xmi.diff.MoveOperationRefactoring
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
-import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
 
 object ProjectMethodExtractor {
     /**
@@ -37,7 +35,6 @@ object ProjectMethodExtractor {
         val oldNamesToMethods = extractNamesToMethods(project, before, statisticContext)
 
         val newMethods = extractMethodsWithNames(project, after)
-
 
         newMethods.forEach { (afterName, newMethod) ->
             val beforeName = if (renameMapping.containsKey(afterName)) {
@@ -62,7 +59,6 @@ object ProjectMethodExtractor {
                         if (newFullName == newMethodName) {
                             isNew = false
                         }
-
                     }
 
                 changedMethodPairs.add(Triple(newMethod, newMethod, isNew))
@@ -71,7 +67,6 @@ object ProjectMethodExtractor {
             oldNamesToMethods[beforeName]?.let { oldMethod ->
                 changedMethodPairs.add(Triple(oldMethod, newMethod, false))
             }
-
         }
         return changedMethodPairs
     }

@@ -13,7 +13,6 @@ import git4idea.GitVcs
 import git4idea.config.GitVcsApplicationSettings
 import java.io.File
 
-
 object PsiUtil {
     private val LOG = Logger.getInstance(PsiUtil::class.java)
     fun getNumberOfLine(file: PsiFile, offset: Int): Int {
@@ -29,7 +28,7 @@ object PsiUtil {
         VfsUtil.markDirtyAndRefresh(false, true, false, File(projectPath))
         val vcsManager = ProjectLevelVcsManager.getInstance(project!!) as ProjectLevelVcsManagerImpl
 
-        //ApplicationManager.getApplication().invokeAndWait(vcsManager::waitForInitialized);
+        // ApplicationManager.getApplication().invokeAndWait(vcsManager::waitForInitialized);
         vcsManager.waitForInitialized()
         Thread.sleep(10000)
         val vcs = GitVcs.getInstance(project)

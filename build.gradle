@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.jetbrains.intellij' version '0.7.2'
     id "org.jetbrains.kotlin.jvm" version "1.5.10"
+    id "io.gitlab.arturbosch.detekt" version "1.17.0"
 }
 
 group = "org.jetbrains.research.commentupdater"
@@ -12,6 +13,7 @@ allprojects {
         plugin 'java'
         plugin 'org.jetbrains.intellij'
         plugin "org.jetbrains.kotlin.jvm"
+        plugin "io.gitlab.arturbosch.detekt"
     }
 
     repositories {
@@ -19,6 +21,19 @@ allprojects {
         jcenter()
         maven { url "https://www.jetbrains.com/intellij-repository/releases" }
         maven { url "https://www.jetbrains.com/intellij-repository/snapshots" }
+    }
+
+    dependencies {
+
+        detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.17.0")
+    }
+
+    detekt {
+        allRules = true
+        parallel = true
+        config = files(("$rootProject.projectDir/detekt.yml"))
+        buildUponDefaultConfig = true
+        autoCorrect = true
     }
 
     compileKotlin {

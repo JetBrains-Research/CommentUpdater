@@ -387,7 +387,6 @@ object CodeCommentDiffs {
         return listOf(REPLACE_OLD) + oldTokens + listOf(REPLACE_NEW) + newTokens + listOf(REPLACE_END)
     }
 
-
     fun computeCodeDiffs(
         oldTokens: List<String>,
         newTokens: List<String>
@@ -437,5 +436,4 @@ object CodeCommentDiffs {
         }
         return Triple(spans, tokens, commands)
     }
-
 }

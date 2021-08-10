@@ -50,8 +50,10 @@ class JITDetector {
     }
 
     fun getPaddedIds(
-        tokens: List<String>, vocab: MutableMap<String, Int>,
-        padToSize: Int?, paddingElement: Int
+        tokens: List<String>,
+        vocab: MutableMap<String, Int>,
+        padToSize: Int?,
+        paddingElement: Int
     ): List<Int> {
         val paddedTokens = if (padToSize != null) tokens.take(padToSize) else tokens
         val ids = paddedTokens.map {
@@ -159,7 +161,7 @@ class JITDetector {
         codeLensTensor.close()
         codeFeaturesTensor.close()
 
-        LOG.info("[CommentUpdater] JIT model result: method ${newMethod.name}, probability: ${probability}")
+        LOG.info("[CommentUpdater] JIT model result: method ${newMethod.name}, probability: $probability")
         return probability >= TRUE_PROB
     }
 
