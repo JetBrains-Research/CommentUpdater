@@ -46,22 +46,20 @@ object ProjectMethodExtractor {
             }
 
             if (!oldNamesToMethods.containsKey(beforeName)) {
-                var isNew = true
+                val isNew =
+                    allRefactorings.filter { it.refactoringType == RefactoringType.MOVE_OPERATION || it.refactoringType == RefactoringType.MOVE_AND_RENAME_OPERATION }
+                        .all { ref ->
+                            val refactoring = (ref as MoveOperationRefactoring)
+                            val newFullName =
+                                refactoring.movedOperation.className + "." + refactoring.movedOperation.name
 
-                allRefactorings.filter { it.refactoringType == RefactoringType.MOVE_OPERATION || it.refactoringType == RefactoringType.MOVE_AND_RENAME_OPERATION }
-                    .forEach { ref ->
-                        val refactoring = (ref as MoveOperationRefactoring)
-                        val newFullName = refactoring.movedOperation.className + "." + refactoring.movedOperation.name
+                            var newMethodName = ""
+                            ApplicationManager.getApplication().runReadAction {
+                                newMethodName = newMethod.qualifiedName
+                            }
 
-                        var newMethodName = ""
-                        ApplicationManager.getApplication().runReadAction {
-                            newMethodName = newMethod.qualifiedName
+                            newFullName != newMethodName
                         }
-
-                        if (newFullName == newMethodName) {
-                            isNew = false
-                        }
-                    }
 
                 changedMethods.add(
                     newMethod to if (isNew) {
