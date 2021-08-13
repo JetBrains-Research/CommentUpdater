@@ -1,13 +1,14 @@
 import subprocess
 import threading
 from collections import deque
-from typing import Optional
+from typing import Optional, List
 import os
 import sys
 from itertools import islice
 import re
 import datetime
 import signal
+import shutil
 
 PROCESSED = 0
 TOTAL = 0
@@ -35,8 +36,13 @@ def extract_project(log_state: str) -> str:
         return ""
     return projects[0][1:-1]
 
+def check_low_memory(last_logs: List[str]) -> bool:
+    low_warning = "Low memory"
+    warning_constant = 4
+    count_low_warnings = sum([int(low_warning in log) for log in last_logs])
+    return count_low_warnings >= warning_constant
 
-def run(cmd, timeout, log_path):
+def run(cmd, timeout, log_path, idea_log_path):
     process: Optional[subprocess.Popen] = None
 
     def target():
@@ -49,17 +55,45 @@ def run(cmd, timeout, log_path):
     thread = threading.Thread(target=target)
     thread.start()
 
+    last_log_suffix_size = 60
     opening = False
     terminated_project = None
+    opening_project = None
     while True:
         log("Waiting for timeout")
         thread.join(timeout)
         if thread.is_alive():
             log("Timeout reached, checking script state")
+
+
             with open(log_path, 'r') as log_file:
                 opening_state = log_file.read().strip()
+
+
+            #with open(idea_log_path, 'r') as idea_log_file:
+            log("Copying idea logs...")
+
+            shutil.copyfile(idea_log_path, './idea.log')
+
+            log("Idea logs copied")
+
+            with open('./idea.log', 'r') as idea_log_file:
+                log("Reading idea logs...")
+                idea_log_content = idea_log_file.read().split('\n')
+                last_idea_logs = idea_log_content[-last_log_suffix_size:]
+                log("Idea logs read")
+
+            if check_low_memory(last_idea_logs):
+                log("Low memory detected, terminating...")
+                terminated_project = extract_project(opening_state)
+                with open(log_path, 'w') as log_file:
+                    log_file.write("")
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                thread.join()
+
+
             log(f"OPENING STATE: {opening_state}")
-            if opening and check_opening(opening_state):
+            if opening and check_opening(opening_state) and opening_project == extract_project(opening_state):
                 terminated_project = extract_project(opening_state)
                 log(f"Too long opening, terminating process on project: {terminated_project}")
                 # Clean up timeout log file before the kill
@@ -71,8 +105,10 @@ def run(cmd, timeout, log_path):
             if check_opening(opening_state):
                 log("Opening detected")
                 opening = True
+                opening_project = extract_project(opening_state)
             else:
                 opening = False
+                opening_project = None
                 log(f"OK script state")
         else:
             log("Thread gracefully finished")
@@ -118,6 +154,7 @@ if __name__ == '__main__':
 
     log_path = os.path.join(os.curdir, sys.argv[4])
 
+    idea_log_path = '/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/comment-updater-headless/build/idea-sandbox/system/log/idea.log'
     batch_size = 20
     timeout = 60 * 10
     script = "./comment_update_miner.sh"
@@ -133,7 +170,7 @@ if __name__ == '__main__':
             batch_file.write('\n'.join(batch))
 
         cmd = f"{script} batch_input.txt {sys.argv[1]} {sys.argv[2]} {sys.argv[3]} {sys.argv[4]}"
-        timeout_pr = run(timeout=timeout, cmd=cmd, log_path=log_path)
+        timeout_pr = run(timeout=timeout, cmd=cmd, log_path=log_path, idea_log_path=idea_log_path)
         if timeout_pr is not None:
             batch_prs = list(map(lambda x: x.split(os.sep)[-1], batch))
             pos = batch_prs.index(timeout_pr)
