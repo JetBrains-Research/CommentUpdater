@@ -90,6 +90,7 @@ def run(cmd, timeout, log_path, idea_log_path):
                     log_file.write("")
                 os.killpg(os.getpgid(process.pid), signal.SIGTERM)
                 thread.join()
+                break
 
 
             log(f"OPENING STATE: {opening_state}")
