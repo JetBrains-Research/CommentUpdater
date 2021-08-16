@@ -16,7 +16,7 @@ class StatisticWriter(val output: File) {
     val gson = Gson()
 
     fun open() {
-        writer = FileWriter(output)
+        writer = FileWriter(output, true)
         writer.write("[")
     }
 

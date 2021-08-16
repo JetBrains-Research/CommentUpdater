@@ -155,7 +155,7 @@ if __name__ == '__main__':
 
     log_path = os.path.join(os.curdir, sys.argv[4])
 
-    idea_log_path = '/Users/Ivan.Pavlov/IdeaProjects/CommentUpdater/comment-updater-headless/build/idea-sandbox/system/log/idea.log'
+    idea_log_path = '/home/ubuntu/CommentUpdater/comment-updater-headless/build/idea-sandbox/system/log/idea.log'
     batch_size = 20
     timeout = 60 * 10
     script = "./comment_update_miner.sh"
