@@ -2,6 +2,7 @@ import com.google.gson.Gson
 import java.io.File
 import java.io.FileWriter
 import java.io.Writer
+import java.nio.file.StandardOpenOption
 
 
 class StatisticWriter(val output: File) {
@@ -16,7 +17,7 @@ class StatisticWriter(val output: File) {
     val gson = Gson()
 
     fun open() {
-        writer = FileWriter(output)
+        writer = FileWriter(output, true)
         writer.write("[")
     }
 
