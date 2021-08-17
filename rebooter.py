@@ -9,6 +9,7 @@ import re
 import datetime
 import signal
 import shutil
+import atexit
 
 PROCESSED = 0
 TOTAL = 0
@@ -42,6 +43,13 @@ def check_low_memory(last_logs: List[str]) -> bool:
     count_low_warnings = sum([int(low_warning in log) for log in last_logs])
     return count_low_warnings >= warning_constant
 
+PROCESS = None
+
+def cleanup():
+    if PROCESS:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        print("Killed process by cleaning up")
+
 def run(cmd, timeout, log_path, idea_log_path):
     process: Optional[subprocess.Popen] = None
 
@@ -59,6 +67,8 @@ def run(cmd, timeout, log_path, idea_log_path):
     opening = False
     terminated_project = None
     opening_project = None
+    global PROCESS
+    PROCESS = process
     while True:
         log("Waiting for timeout")
         thread.join(timeout)
@@ -117,8 +127,16 @@ def run(cmd, timeout, log_path, idea_log_path):
     log(str(process.returncode))
     return terminated_project
 
+def save_logs(logs_dir, idea_log_path):
+    logs_num = len(os.listdir(logs_dir))
+    log("Copying idea logs...")
+    shutil.copyfile(idea_log_path, os.path.join(logs_dir, f'idea{logs_num}.log'))
+    log("Idea logs copied")
+
 
 if __name__ == '__main__':
+
+    atexit.register(cleanup)
 
     if len(sys.argv) != 6:
         print("""
@@ -155,6 +173,7 @@ if __name__ == '__main__':
 
     log_path = os.path.join(os.curdir, sys.argv[4])
 
+    dir_to_save_logs = os.path.join(os.curdir, 'logs')
     idea_log_path = '/home/ubuntu/CommentUpdater/comment-updater-headless/build/idea-sandbox/system/log/idea.log'
     batch_size = 20
     timeout = 60 * 10
@@ -172,6 +191,7 @@ if __name__ == '__main__':
 
         cmd = f"{script} batch_input.txt {sys.argv[1]} {sys.argv[2]} {sys.argv[3]} {sys.argv[4]}"
         timeout_pr = run(timeout=timeout, cmd=cmd, log_path=log_path, idea_log_path=idea_log_path)
+        save_logs(dir_to_save_logs)
         if timeout_pr is not None:
             batch_prs = list(map(lambda x: x.split(os.sep)[-1], batch))
             pos = batch_prs.index(timeout_pr)
