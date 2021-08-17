@@ -47,7 +47,7 @@ PROCESS = None
 
 def cleanup():
     if PROCESS:
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        os.killpg(os.getpgid(PROCESS.pid), signal.SIGTERM)
         print("Killed process by cleaning up")
 
 def run(cmd, timeout, log_path, idea_log_path):
@@ -138,6 +138,7 @@ if __name__ == '__main__':
 
     atexit.register(cleanup)
 
+
     if len(sys.argv) != 6:
         print("""
                 # args:
@@ -174,6 +175,9 @@ if __name__ == '__main__':
     log_path = os.path.join(os.curdir, sys.argv[4])
 
     dir_to_save_logs = os.path.join(os.curdir, 'logs')
+    if not os.path.exists(dir_to_save_logs):
+        os.makedirs(dir_to_save_logs)
+
     idea_log_path = '/home/ubuntu/CommentUpdater/comment-updater-headless/build/idea-sandbox/system/log/idea.log'
     batch_size = 20
     timeout = 60 * 10
@@ -191,7 +195,7 @@ if __name__ == '__main__':
 
         cmd = f"{script} batch_input.txt {sys.argv[1]} {sys.argv[2]} {sys.argv[3]} {sys.argv[4]}"
         timeout_pr = run(timeout=timeout, cmd=cmd, log_path=log_path, idea_log_path=idea_log_path)
-        save_logs(dir_to_save_logs)
+        save_logs(dir_to_save_logs, idea_log_path)
         if timeout_pr is not None:
             batch_prs = list(map(lambda x: x.split(os.sep)[-1], batch))
             pos = batch_prs.index(timeout_pr)
