@@ -10,8 +10,9 @@ import ai.onnxruntime.OrtEnvironment
 object ONNXTensorUtils {
 
     fun twoDListToTensor(data: List<List<Long>>, environment: OrtEnvironment): OnnxTensor? {
-        if (data.isEmpty())
+        if (data.isEmpty()) {
             throw Exception("Can't handle empty lists")
+        }
         val arrayData = Array(data.size) {
             LongArray(data[0].size)
         }
@@ -24,8 +25,9 @@ object ONNXTensorUtils {
     }
 
     fun oneDListToTensor(data: List<Long>, environment: OrtEnvironment): OnnxTensor? {
-        if (data.isEmpty())
+        if (data.isEmpty()) {
             throw Exception("Can't handle empty lists")
+        }
         val arrayData = LongArray(data.size)
         for (i in 0 until data.size) {
             arrayData[i] = data[i]
@@ -34,8 +36,9 @@ object ONNXTensorUtils {
     }
 
     fun threeDListToTensor(data: List<List<List<Float>>>, environment: OrtEnvironment): OnnxTensor? {
-        if (data.isEmpty() || data[0].isEmpty())
+        if (data.isEmpty() || data[0].isEmpty()) {
             throw Exception("Can't handle empty lists")
+        }
         val arrayData = Array(data.size) {
             Array(data[0].size) {
                 FloatArray(data[0][0].size)
