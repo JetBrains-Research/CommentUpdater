@@ -12,8 +12,8 @@ import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
  */
 object JITModelFeatureExtractor {
 
-    val NUM_CODE_FEATURES = 19
-    val NUM_NL_FEATURES = 53
+    const val NUM_CODE_FEATURES = 19
+    const val NUM_NL_FEATURES = 53
 
     // todo: import stop words, not hardcode
     val STOP_WORDS = listOf(
@@ -52,7 +52,6 @@ object JITModelFeatureExtractor {
         "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient",
         "try", "void", "volatile", "while"
     )
-
 
     fun extractArguments(method: PsiMethod): List<Pair<String, String>> {
         return method.parameterList.parameters.map {
@@ -97,12 +96,14 @@ object JITModelFeatureExtractor {
             }.flatten(),
             "method_name" to method.name.tokens()
         )
-
     }
 
+    @Suppress("MagicNumber")
     fun getCodeFeatures(
-        spanSequence: List<String>, commentTokens: List<String>,
-        oldFeatures: HashMap<String, List<String>>, newFeatures: HashMap<String, List<String>>,
+        spanSequence: List<String>,
+        commentTokens: List<String>,
+        oldFeatures: HashMap<String, List<String>>,
+        newFeatures: HashMap<String, List<String>>,
         maxCodeLen: Int
     ): Array<IntArray> {
         val oldTypeSet = (oldFeatures["return_type"] ?: listOf()).toSet()
@@ -161,7 +162,6 @@ object JITModelFeatureExtractor {
                 }
                 it.value in JAVA_KEYWORDS -> {
                     features[it.index][9] = 1
-
                 }
                 it.value.all { !it.isLetterOrDigit() } -> {
                     // is operator
@@ -198,9 +198,8 @@ object JITModelFeatureExtractor {
             // it is hard, because code already spanned with edit tokens and so on
             // it isn't obvious to figure out, whether token was taken from new or old sequence
             // now we consider every subtoken as token
-            //features[it.index][17] = subTokenLabels[it.index]
-            //features[it.index][18] = subTokenIndices[it.index]
-
+            // features[it.index][17] = subTokenLabels[it.index]
+            // features[it.index][18] = subTokenIndices[it.index]
         }
         return features
     }
@@ -229,9 +228,13 @@ object JITModelFeatureExtractor {
         return labels to indices
     }
 
+    @Suppress("MagicNumber")
     fun getCommentFeatures(
-        oldCommentTokens: List<String>, oldCommentSubTokens: List<String>, tokenDiffCodeSubTokens: List<String>,
-        oldCodeFeatures: HashMap<String, List<String>>, newCodeFeatures: HashMap<String, List<String>>,
+        oldCommentTokens: List<String>,
+        oldCommentSubTokens: List<String>,
+        tokenDiffCodeSubTokens: List<String>,
+        oldCodeFeatures: HashMap<String, List<String>>,
+        newCodeFeatures: HashMap<String, List<String>>,
         maxCommentLen: Int
     ): Array<IntArray> {
         val duplicates = oldCommentSubTokens.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.toSet()
@@ -282,7 +285,7 @@ object JITModelFeatureExtractor {
             if (it.index >= maxCommentLen) {
                 break
             }
-            val token = it.value.toLowerCase()
+            val token = it.value.lowercase()
             when (token) {
                 in intersectionType -> {
                     features[it.index][0] = 1

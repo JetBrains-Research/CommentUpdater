@@ -7,10 +7,8 @@ import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
-import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
-import com.intellij.openapi.vcs.impl.ProjectLevelVcsManagerImpl
 import com.intellij.serviceContainer.AlreadyDisposedException
 import git4idea.GitCommit
 import git4idea.GitVcs
@@ -26,11 +24,9 @@ import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
-import org.jetbrains.research.commentupdater.utils.PsiUtil
+import org.jetbrains.research.commentupdater.utils.PsiUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import java.util.concurrent.CountDownLatch
-import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 
@@ -69,7 +65,8 @@ class CodeCommentExtractor : CliktCommand() {
             applicationTag: String = "[HeadlessCommentUpdater]"
         ) {
             val fullLogMessage =
-                "$level ${if (logThread) Thread.currentThread().name else ""} $applicationTag [$projectTag $projectProcess] $message"
+                "$level ${if (logThread) Thread.currentThread().name else ""}" +
+                        " $applicationTag [$projectTag $projectProcess] $message"
 
             when (level) {
                 LogLevel.INFO -> {
@@ -147,7 +144,7 @@ class CodeCommentExtractor : CliktCommand() {
             return
         }
 
-        val vcsManager = PsiUtil.vcsSetup(project, projectPath)
+        val vcsManager = PsiUtils.vcsSetup(project, projectPath)
 
         val gitRepoManager = ServiceManager.getService(
             project,

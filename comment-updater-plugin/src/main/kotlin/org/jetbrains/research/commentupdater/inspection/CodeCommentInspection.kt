@@ -1,12 +1,17 @@
 package org.jetbrains.research.commentupdater.inspection
 
-import com.intellij.codeInspection.*
-import com.intellij.openapi.vcs.changes.Change
+import CommentUpdaterBundle
+import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.LocalInspectionToolSession
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
-import com.intellij.psi.*
+import com.intellij.psi.JavaElementVisitor
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.javadoc.PsiDocComment
-import gr.uom.java.xmi.diff.*
+import gr.uom.java.xmi.diff.RenameOperationRefactoring
 import org.jetbrains.research.commentupdater.JITDetector
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
@@ -15,7 +20,7 @@ import org.refactoringminer.api.Refactoring
 
 class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
 
-    private val LOG: Logger =
+    private val logger: Logger =
         Logger.getInstance(javaClass)
     val detector = JITDetector()
 
@@ -24,7 +29,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
     var currentMethodsRefactorings = hashMapOf<String, MutableList<Refactoring>>()
 
     override fun inspectionStarted(session: LocalInspectionToolSession, isOnTheFly: Boolean) {
-        LOG.info("[CommentUpdater] Inspection started")
+        logger.info("[CommentUpdater] Inspection started")
 
         // Extract changes
         currentFile = session.file.name
@@ -37,16 +42,15 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
             currentMethodsRefactorings = RefactoringExtractor.methodsToRefactoringTypes(refactorings)
         }
 
-        LOG.info("[CommentUpdater] File ${currentFile}, Refactorings: $currentMethodsRefactorings")
+        logger.info("[CommentUpdater] File $currentFile, Refactorings: $currentMethodsRefactorings")
 
         super.inspectionStarted(session, isOnTheFly)
     }
 
     override fun inspectionFinished(session: LocalInspectionToolSession, problemsHolder: ProblemsHolder) {
-        LOG.info("[CommentUpdater] Inspection finished")
+        logger.info("[CommentUpdater] Inspection finished")
         super.inspectionFinished(session, problemsHolder)
     }
-
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return object : JavaElementVisitor() {
@@ -58,7 +62,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                         val newMethod = (comment.owner as PsiMethod)
                         val newName = newMethod.qualifiedName
 
-                        LOG.info("[CommentUpdater] Processing comment in method $newName in file $currentFile.")
+                        logger.info("[CommentUpdater] Processing comment in method $newName in file $currentFile.")
 
                         val oldName = currentMethodsRefactorings.getOrElse(
                             newName
@@ -68,17 +72,16 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                         val oldMethod = (oldName ?: newName).let { name ->
                             currentChanges?.let { change ->
                                 val oldMethod = MethodChangesExtractor.getOldMethod(newMethod, change, name)
-                                LOG.info("[CommentUpdater] Found old method with name: $name")
+                                logger.info("[CommentUpdater] Found old method with name: $name")
                                 oldMethod
                             }
                         }
                         oldMethod?.let {
 
-                            // todo: compare whether oldMethod != newMethod
                             val prediction = detector.predict(oldMethod, newMethod)
 
                             val hasInconsistency = if (prediction == null) {
-                                LOG.info("[CommentUpdater] Prediction error!")
+                                logger.info("[CommentUpdater] Prediction error!")
                                 false
                             } else {
                                 prediction
@@ -90,7 +93,7 @@ class CodeCommentInspection : AbstractBaseJavaLocalInspectionTool() {
                                 )
                             }
 
-                            LOG.info("[CommentUpdater] Predicted ${hasInconsistency}")
+                            logger.info("[CommentUpdater] Predicted $hasInconsistency")
                         }
                     }
                 }

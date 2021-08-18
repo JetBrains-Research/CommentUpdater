@@ -10,12 +10,12 @@ object CodeCommentTokenizer {
     private val COMMENT_TAGS = listOf("@return", "@ return", "@param", "@ param", "@throws", "@ throws")
 
     fun subTokenizeComment(comment: String): List<String> {
-        val commentWithoutStars = comment.filter{it != '/' && it != '*'}
+        val commentWithoutStars = comment.filter { it != '/' && it != '*' }
         if (commentWithoutStars.trim().startsWith("@return")) {
-            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag = true)
         }
         if (commentWithoutStars.trim().startsWith("@param")) {
-            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + subTokenizeText(commentWithoutStars, removeTag = true)
         }
         return subTokenizeText(commentWithoutStars, removeTag = false)
     }
@@ -26,12 +26,12 @@ object CodeCommentTokenizer {
     }
 
     fun tokenizeComment(comment: String): List<String> {
-        val commentWithoutStars = comment.filter{it != '/' && it != '*'}
+        val commentWithoutStars = comment.filter { it != '/' && it != '*' }
         if (commentWithoutStars.trim().startsWith("@return")) {
-            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag = true)
         }
         if (commentWithoutStars.trim().startsWith("@param")) {
-            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag=true)
+            return listOf("@return") + tokenizeText(commentWithoutStars, removeTag = true)
         }
         return tokenizeText(commentWithoutStars, removeTag = false)
     }
@@ -47,10 +47,9 @@ object CodeCommentTokenizer {
 
         return Regex("[a-zA-Z0-9]+|[^\\sa-zA-Z0-9]|[^_\\sa-zA-Z0-9]")
             .findAll(cleanedText)
-            .map{
+            .map {
                 it.groupValues[0]
             }.toList()
-
     }
 
     private fun removeHTMLTag(line: String): String {
@@ -93,7 +92,7 @@ object CodeCommentTokenizer {
             processedTokens.addAll(
                 Regex("[a-zA-Z0-9]+|[^\\sa-zA-Z0-9]|[^_\\sa-zA-Z0-9]")
                     .findAll(token)
-                    .map{
+                    .map {
                         it.groupValues[0]
                     }.toList()
             )
@@ -113,8 +112,4 @@ object CodeCommentTokenizer {
             it.text
         }.joinToString(" ")
     }
-
 }
-
-
-

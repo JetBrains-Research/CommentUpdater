@@ -33,8 +33,13 @@ data class MethodMetric(
 class MetricsCalculator(config: ModelFilesConfig) {
     val simModel: SimilarityModel = SimilarityModel(config)
 
-    fun calculateMetrics(oldCode: String, newCode: String, oldComment: String, newComment: String,
-    methodRefactorings: MutableList<Refactoring> = mutableListOf()): MethodMetric? {
+    fun calculateMetrics(
+        oldCode: String,
+        newCode: String,
+        oldComment: String,
+        newComment: String,
+        methodRefactorings: MutableList<Refactoring> = mutableListOf()
+    ): MethodMetric? {
 
         var isRenamed = false
         var isParamAdded = false
@@ -143,7 +148,6 @@ class MetricsCalculator(config: ModelFilesConfig) {
             it.first in listOf(CodeCommentDiffs.REPLACE_NEW, CodeCommentDiffs.INSERT)
         }.map { it.second }
 
-        // todo: add removedStatements.size as a feature
         val oldChangedCommentSim = if (removedStatements.isNotEmpty()) {
             simModel.compute(
                 removedStatements,

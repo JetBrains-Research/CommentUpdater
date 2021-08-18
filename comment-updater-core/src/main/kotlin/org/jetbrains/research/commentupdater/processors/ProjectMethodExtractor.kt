@@ -81,9 +81,10 @@ object ProjectMethodExtractor {
                 it.docComment != null
             }
 
-            namesToMethods = hashMapOf(*methods.map {
+            val namesToMethodsPairList = methods.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
-            }.toTypedArray())
+            }.toTypedArray()
+            namesToMethods = hashMapOf(*namesToMethodsPairList)
         }
 
         return namesToMethods

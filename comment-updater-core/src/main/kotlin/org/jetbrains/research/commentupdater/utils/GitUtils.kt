@@ -2,6 +2,8 @@ import com.intellij.openapi.vcs.changes.Change
 import git4idea.GitCommit
 import git4idea.history.GitHistoryUtils
 import git4idea.repo.GitRepository
+import org.jetbrains.annotations.ApiStatus
+
 
 fun GitCommit.filterChanges(fileSuffix: String): List<Change> {
     return this.changes

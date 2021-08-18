@@ -9,7 +9,7 @@ data class EmbeddingConfig(
     val maxCommentLen: Int,
     @Json(name = "unk")
     val unknownToken: String,
-    @Json(name="pad")
+    @Json(name = "pad")
     val paddingToken: String,
     @Json(name = "nl")
     val commentVocab: MutableMap<String, Int>,

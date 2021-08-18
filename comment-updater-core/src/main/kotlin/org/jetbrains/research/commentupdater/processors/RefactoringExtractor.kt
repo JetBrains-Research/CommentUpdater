@@ -4,7 +4,12 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
 import gr.uom.java.xmi.UMLModelASTReader
-import gr.uom.java.xmi.diff.*
+import gr.uom.java.xmi.diff.AddParameterRefactoring
+import gr.uom.java.xmi.diff.RemoveParameterRefactoring
+import gr.uom.java.xmi.diff.RenameOperationRefactoring
+import gr.uom.java.xmi.diff.RenameVariableRefactoring
+import gr.uom.java.xmi.diff.ChangeReturnTypeRefactoring
+import gr.uom.java.xmi.diff.ChangeVariableTypeRefactoring
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 import java.nio.file.Files.createFile
@@ -87,7 +92,6 @@ object RefactoringExtractor {
             return modelDiff.refactorings.filter {
                 it.refactoringType in REFACTORINGS
             }
-
         } catch (e: VcsException) {
             LOG.warn("[CommentUpdater] Failed to get a file's content from the last revision.")
         }
