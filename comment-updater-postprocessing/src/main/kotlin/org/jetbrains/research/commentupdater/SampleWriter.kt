@@ -6,30 +6,33 @@ import java.io.File
 import java.io.FileWriter
 import java.io.Writer
 
-class SampleWriter(output: File) {
+class SampleWriter(val outputDir: File) {
 
     // Saving data
-    private val outputPath: String = output.path
 
-    lateinit var outputFile: File
-    lateinit var writer: Writer
+    val projectFiles = mutableMapOf<String, File>()
+    val projectWriters = mutableMapOf<String, Writer>()
+
     private val gson = Gson()
 
-    fun open() {
-        outputFile = File(outputPath)
-        outputFile.createNewFile()
-        writer = FileWriter(outputFile)
-        writer.write("[")
+    fun open(project: String) {
+        val projectFile = outputDir.resolve("$project.json")
+        projectFile.createNewFile()
+        val projectWriter = FileWriter(projectFile)
+        projectWriter.write("[")
+        projectFiles[project] = projectFile
+        projectWriters[project] = projectWriter
     }
 
-    fun close() {
-        writer.write("]")
-        writer.close()
+    fun close(project: String) {
+        projectWriters[project]?.write("]")
+        projectWriters[project]?.close()
+        projectWriters.remove(project)
     }
 
-    fun writeSample(datasetSample: DatasetSample) {
+    fun writeSample(datasetSample: DatasetSample, project: String) {
         val jsonSample = gson.toJson(datasetSample)
-        writer.write(jsonSample)
-        writer.write(",")
+        projectWriters[project]?.write(jsonSample)
+        projectWriters[project]?.write(",")
     }
 }
