@@ -240,9 +240,9 @@ class CodeCommentExtractor : CliktCommand() {
                     newComment = newMethod.docComment?.text ?: ""
                 }
 
-                if (oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()) {
-                    continue
-                }
+                val isSampleUnchanged = oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()
+
+                if (isSampleUnchanged) continue
 
                 val methodRefactorings = methodsRefactorings.getOrDefault(
                     newMethodName,
