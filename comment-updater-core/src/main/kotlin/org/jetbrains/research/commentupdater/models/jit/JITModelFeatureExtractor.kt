@@ -12,8 +12,8 @@ import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
  */
 object JITModelFeatureExtractor {
 
-    val NUM_CODE_FEATURES = 19
-    val NUM_NL_FEATURES = 53
+    const val NUM_CODE_FEATURES = 19
+    const val NUM_NL_FEATURES = 53
 
     // todo: import stop words, not hardcode
     val STOP_WORDS = listOf(
@@ -98,6 +98,7 @@ object JITModelFeatureExtractor {
         )
     }
 
+    @Suppress("MagicNumber")
     fun getCodeFeatures(
         spanSequence: List<String>,
         commentTokens: List<String>,
@@ -227,6 +228,7 @@ object JITModelFeatureExtractor {
         return labels to indices
     }
 
+    @Suppress("MagicNumber")
     fun getCommentFeatures(
         oldCommentTokens: List<String>,
         oldCommentSubTokens: List<String>,
@@ -283,7 +285,7 @@ object JITModelFeatureExtractor {
             if (it.index >= maxCommentLen) {
                 break
             }
-            val token = it.value.toLowerCase()
+            val token = it.value.lowercase()
             when (token) {
                 in intersectionType -> {
                     features[it.index][0] = 1

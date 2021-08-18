@@ -14,7 +14,10 @@ import com.intellij.serviceContainer.AlreadyDisposedException
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.repo.GitRepositoryManager
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
@@ -23,7 +26,7 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
-import org.jetbrains.research.commentupdater.utils.PsiUtil
+import org.jetbrains.research.commentupdater.utils.PsiUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import java.util.concurrent.*
@@ -51,7 +54,8 @@ class CodeCommentExtractor : CliktCommand() {
 
     private val statsHandler = StatisticHandler()
 
-    private lateinit var metricsModel: MetricsCalculator
+    // Metric model
+    lateinit var metricsModel: MetricsCalculator
 
     companion object {
         private val LOG: Logger =
@@ -168,7 +172,7 @@ class CodeCommentExtractor : CliktCommand() {
         log(LogLevel.INFO, "Opened!")
 
         log(LogLevel.INFO, "Initializing vcs..")
-        val vcsManager = PsiUtil.vcsSetup(project, projectPath)
+        val vcsManager = PsiUtils.vcsSetup(project, projectPath)
         log(LogLevel.INFO, "Initialized!")
 
         val gitRepoManager = ServiceManager.getService(
@@ -271,9 +275,9 @@ class CodeCommentExtractor : CliktCommand() {
                     newComment = newMethod.docComment?.text ?: ""
                 }
 
-                if (oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()) {
-                    continue
-                }
+                val isSampleUnchanged = oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()
+
+                if (isSampleUnchanged) continue
 
                 if (!MethodChangesExtractor.checkMethodChanged(
                         oldComment = oldComment,

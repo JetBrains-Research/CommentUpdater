@@ -1,6 +1,7 @@
 package org.jetbrains.research.commentupdater.utils
 
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.SystemInfo
@@ -13,8 +14,8 @@ import git4idea.GitVcs
 import git4idea.config.GitVcsApplicationSettings
 import java.io.File
 
-object PsiUtil {
-    private val LOG = Logger.getInstance(PsiUtil::class.java)
+object PsiUtils {
+    private val LOG = Logger.getInstance(PsiUtils::class.java)
     fun getNumberOfLine(file: PsiFile, offset: Int): Int {
         val fileViewProvider = file.viewProvider
         val document = fileViewProvider.document
@@ -24,13 +25,10 @@ object PsiUtil {
     /**
      * Setups VCS to get access to the project's Git root
      */
-    fun vcsSetup(project: Project?, projectPath: String?): ProjectLevelVcsManagerImpl {
+    fun vcsSetup(project: Project, projectPath: String): ProjectLevelVcsManagerImpl {
         VfsUtil.markDirtyAndRefresh(false, true, false, File(projectPath))
-        val vcsManager = ProjectLevelVcsManager.getInstance(project!!) as ProjectLevelVcsManagerImpl
-
-        // ApplicationManager.getApplication().invokeAndWait(vcsManager::waitForInitialized);
-        vcsManager.waitForInitialized()
-        Thread.sleep(10000)
+        val vcsManager = ProjectLevelVcsManager.getInstance(project) as ProjectLevelVcsManagerImpl
+        ApplicationManager.getApplication().invokeAndWait(vcsManager::waitForInitialized)
         val vcs = GitVcs.getInstance(project)
         try {
             vcs.doActivate()

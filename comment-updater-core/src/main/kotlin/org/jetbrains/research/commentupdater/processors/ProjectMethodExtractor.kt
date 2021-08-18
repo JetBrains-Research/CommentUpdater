@@ -91,9 +91,10 @@ object ProjectMethodExtractor {
             }
             numOfDocMethods = docMethods.size
 
-            namesToMethods = hashMapOf(*docMethods.map {
+            val namesToMethodsPairList = methods.map {
                 ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
-            }.toTypedArray())
+            }.toTypedArray()
+            namesToMethods = hashMapOf(*namesToMethodsPairList)
         }
 
         statisticContext["numOfMethods"] = numOfMethods
