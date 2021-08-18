@@ -7,6 +7,7 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier.ABSTRACT
 import com.intellij.psi.util.PsiTreeUtil
 import gr.uom.java.xmi.diff.MoveOperationRefactoring
 import org.jetbrains.research.commentupdater.dataset.MethodUpdateType
@@ -17,8 +18,21 @@ import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 
 object ProjectMethodExtractor {
+
+    private fun checkMethod(method: PsiMethod): Boolean {
+        var isCorrectMethod = true
+        ApplicationManager.getApplication().runReadAction {
+            if (method.isConstructor) isCorrectMethod = false
+            if (method.modifierList.hasModifierProperty(ABSTRACT)) isCorrectMethod = false
+            if (method.hasAnnotation("Override")) isCorrectMethod = false
+            if (method.body == null) isCorrectMethod = false
+            else if (method.body!!.isEmpty) isCorrectMethod = false
+        }
+        return isCorrectMethod
+    }
+
     /**
-     * @return: List of pairs oldMethod to newMethod
+     * @return: List of pairs newMethod to update type
      */
     fun extractChangedMethods(
         project: Project,
@@ -90,7 +104,10 @@ object ProjectMethodExtractor {
                 }
             }
         }
-        return changedMethods
+        val filteredUpdatedMethods = changedMethods.filter {
+            checkMethod(it.first)
+        }
+        return filteredUpdatedMethods.toMutableList()
     }
 
     private fun extractMethodsWithNames(project: Project, content: String): List<Pair<String, PsiMethod>> {
