@@ -68,29 +68,4 @@ object ProjectMethodExtractor {
 
         return methodsWithNames
     }
-
-    private fun extractNamesToMethods(project: Project, content: String): HashMap<String, PsiMethod> {
-        lateinit var psiFile: PsiFile
-        lateinit var methods: List<PsiMethod>
-        lateinit var namesToMethods: HashMap<String, PsiMethod>
-
-        ApplicationManager.getApplication().runReadAction {
-            psiFile = PsiFileFactory.getInstance(project).createFileFromText(
-                "extractNamesToMethodsFile",
-                JavaFileType.INSTANCE,
-                content
-            )
-
-            methods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
-                it.docComment != null
-            }
-
-            val namesToMethodsPairList = methods.map {
-                ((it.containingClass?.qualifiedName ?: "") + "." + it.name) to it
-            }.toTypedArray()
-            namesToMethods = hashMapOf(*namesToMethodsPairList)
-        }
-
-        return namesToMethods
-    }
 }

@@ -26,9 +26,7 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
-import org.jetbrains.research.commentupdater.utils.PsiUtils
-import org.jetbrains.research.commentupdater.utils.qualifiedName
-import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import org.jetbrains.research.commentupdater.utils.*
 import kotlin.system.exitProcess
 
 
