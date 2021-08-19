@@ -2,6 +2,7 @@ package org.jetbrains.research.commentupdater.dataset
 
 import com.beust.klaxon.Json
 import org.jetbrains.research.commentupdater.models.MethodMetric
+import org.jetbrains.research.commentupdater.utils.MethodNameWithParam
 
 data class RawDatasetSample(
     @Json
@@ -13,9 +14,9 @@ data class RawDatasetSample(
     @Json
     val newComment: String,
     @Json
-    val oldMethodName: String,
+    val oldMethodName: MethodNameWithParam,
     @Json
-    val newMethodName: String,
+    val newMethodName: MethodNameWithParam,
     @Json
     val commitId: String,
     @Json

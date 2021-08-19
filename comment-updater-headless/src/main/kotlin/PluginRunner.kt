@@ -29,7 +29,6 @@ import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.PsiUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import java.util.concurrent.*
 import kotlin.system.exitProcess
 
 
@@ -91,7 +90,6 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     override fun run() {
-        LOG.info("Logging startup")
         log(LogLevel.INFO, "Starting Application")
 
         val inputFile = dataset
@@ -158,7 +156,7 @@ class CodeCommentExtractor : CliktCommand() {
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)
         } catch (e: AlreadyDisposedException) {
             // TODO: figure out why this happened
-            println(e.message)
+            log(LogLevel.WARN, e.message.toString())
         }
 
     private fun collectProjectExamples(projectPath: String) {
@@ -265,6 +263,8 @@ class CodeCommentExtractor : CliktCommand() {
                 lateinit var newCode: String
                 lateinit var oldComment: String
                 lateinit var newComment: String
+                lateinit var oldNameWithParam: MethodNameWithParam
+                lateinit var newNameWithParam: MethodNameWithParam
 
                 ApplicationManager.getApplication().runReadAction {
                     newMethodName = newMethod.qualifiedName
@@ -273,6 +273,8 @@ class CodeCommentExtractor : CliktCommand() {
                     newCode = newMethod.textWithoutDoc
                     oldComment = oldMethod.docComment?.text ?: ""
                     newComment = newMethod.docComment?.text ?: ""
+                    oldNameWithParam = oldMethod.nameWithParams
+                    newNameWithParam = newMethod.nameWithParams
                 }
 
                 val isSampleUnchanged = oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()
@@ -299,8 +301,8 @@ class CodeCommentExtractor : CliktCommand() {
                     commitId = commit.id.toString(),
                     newFileName = newFileName,
                     commitTime = commit.timestamp.toString(),
-                    oldMethodName = oldMethodName,
-                    newMethodName = newMethodName
+                    oldMethodName = oldNameWithParam,
+                    newMethodName = newNameWithParam
                 )
 
                 writeMutex.withLock {
