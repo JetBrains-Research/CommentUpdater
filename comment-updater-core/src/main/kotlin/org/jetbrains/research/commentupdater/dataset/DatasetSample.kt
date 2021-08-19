@@ -7,6 +7,7 @@ data class DatasetSample(
     val newCode: String,
     val oldComment: String,
     val newComment: String,
+    // TODO: Add full names here
     val oldMethodName: String,
     val newMethodName: String,
     val commitId: String,

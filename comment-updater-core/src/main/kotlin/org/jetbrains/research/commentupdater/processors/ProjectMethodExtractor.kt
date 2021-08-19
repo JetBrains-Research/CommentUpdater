@@ -7,6 +7,7 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiType
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.research.commentupdater.utils.MethodNameWithParam
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
@@ -55,12 +56,13 @@ object ProjectMethodExtractor {
                 content
             )
 
-            methodsWithNames = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
+            val documentedMethods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
                 it.docComment != null
-            }.associateBy {
+            }
+            methodsWithNames = documentedMethods.associateBy {
                 MethodNameWithParam(
                     name = ((it.containingClass?.qualifiedName ?: "") + "." + it.name),
-                    paramTypes = it.typeParameterList?.typeParameters?.map { param -> param.qualifiedName ?: ""} ?: emptyList()
+                    paramTypes = it.parameters.map { param -> (param.type as PsiType).canonicalText }
                 )
             }
         }
