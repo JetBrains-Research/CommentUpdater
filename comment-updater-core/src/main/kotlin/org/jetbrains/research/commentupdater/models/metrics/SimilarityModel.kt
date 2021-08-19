@@ -112,8 +112,9 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
             val inputs = mapOf("id" to idTensor)
             embeddings.run(inputs).use { results ->
                 val embedding = results[0] as OnnxTensor
+                val floatBuffer = embedding.floatBuffer
                 for (j in 0 until EMBEDDING_SIZE) {
-                    embeddingMatrix.set(i.toLong(), j.toLong(), embedding.floatBuffer[j].toDouble())
+                    embeddingMatrix.set(i.toLong(), j.toLong(), floatBuffer[j].toDouble())
                 }
             }
             idTensor?.close()
