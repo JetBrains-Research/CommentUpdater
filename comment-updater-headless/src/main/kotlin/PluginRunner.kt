@@ -134,7 +134,7 @@ class CodeCommentExtractor : CliktCommand() {
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)
         } catch (e: AlreadyDisposedException) {
             // TODO: figure out why this happened
-            println(e.message)
+            log(LogLevel.WARN, e.message.toString())
         }
 
     private fun collectProjectExamples(projectPath: String) {
