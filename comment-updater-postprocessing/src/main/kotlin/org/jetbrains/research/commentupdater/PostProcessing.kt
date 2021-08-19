@@ -8,12 +8,7 @@ import com.google.gson.Gson
 import com.google.gson.stream.JsonReader
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.diagnostic.Logger
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.jetbrains.research.commentupdater.SampleWriter
 import org.jetbrains.research.commentupdater.StatisticHandler
 import org.jetbrains.research.commentupdater.dataset.CommentUpdateLabel
@@ -127,7 +122,7 @@ class PostProcessing : CliktCommand() {
         sampleWriter = SampleWriter(output)
         LOG.info("Logging startup")
         log(LogLevel.INFO, "Starting postprocessing")
-        val projects = getProjectDataPaths(dataset)
+        val projects = getProjectDataPaths(dataset, output)
         statisticHandler.numOfProjects = projects.size
 
         projects.mapIndexed { index, it ->
@@ -150,10 +145,12 @@ class PostProcessing : CliktCommand() {
     }
 
 
-    private fun getProjectDataPaths(dataset: File): List<String> {
+    private fun getProjectDataPaths(dataset: File, output: File): List<String> {
         // make list of all files in directory from arg
-
-        return dataset.listFiles()?.map { it.path } ?: emptyList()
+        val processedProjects = output.listFiles()?.map { it.path.split(File.separator).last() } ?: emptyList()
+        return dataset.listFiles()?.map { it.path }?.filter {
+            !processedProjects.contains(it.split(File.separator).last())
+        } ?: emptyList()
     }
 
     private fun processProject(projectPath: String) {
