@@ -31,7 +31,7 @@ object ProjectMethodExtractor {
 
         val changedMethodPairs = mutableListOf<Pair<PsiMethod, PsiMethod>>()
 
-        val oldMethodsWithNames = extractMethodsWithFullNames(project, before)
+        val oldMethodsWithNames = extractMethodsWithFullNames(project, before, statisticContext)
 
         val newMethodsWithNames = extractMethodsWithFullNames(project, after)
 
@@ -47,9 +47,12 @@ object ProjectMethodExtractor {
         return changedMethodPairs
     }
 
-    private fun extractMethodsWithFullNames(project: Project, content: String): Map<MethodNameWithParam, PsiMethod> {
+    private fun extractMethodsWithFullNames(project: Project, content: String,
+    statisticContext: HashMap<String, Int> = hashMapOf()): Map<MethodNameWithParam, PsiMethod> {
         lateinit var psiFile: PsiFile
         lateinit var methodsWithNames: Map<MethodNameWithParam, PsiMethod>
+        var numOfMethods: Int = 0
+        var numOfDocMethods: Int = 0
 
         ApplicationManager.getApplication().runReadAction {
             psiFile = PsiFileFactory.getInstance(project).createFileFromText(
@@ -58,13 +61,21 @@ object ProjectMethodExtractor {
                 content
             )
 
-            val documentedMethods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java).filter {
+            val fileMethods = PsiTreeUtil.findChildrenOfType(psiFile, PsiMethod::class.java)
+            val documentedMethods = fileMethods.filter {
                 it.docComment != null
             }
+            numOfDocMethods = documentedMethods.size
+            numOfMethods = fileMethods.size
+
             methodsWithNames = documentedMethods.associateBy {
                 it.nameWithParams
             }
         }
+
+
+        statisticContext["numOfMethods"] = numOfMethods
+        statisticContext["numOfDocMethods"] = numOfDocMethods
 
         return methodsWithNames
     }
