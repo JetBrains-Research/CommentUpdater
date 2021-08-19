@@ -11,6 +11,7 @@ import com.intellij.psi.PsiType
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.research.commentupdater.utils.MethodNameWithParam
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
+import org.jetbrains.research.commentupdater.utils.nameWithParams
 import org.refactoringminer.api.Refactoring
 
 object ProjectMethodExtractor {
@@ -60,10 +61,7 @@ object ProjectMethodExtractor {
                 it.docComment != null
             }
             methodsWithNames = documentedMethods.associateBy {
-                MethodNameWithParam(
-                    name = ((it.containingClass?.qualifiedName ?: "") + "." + it.name),
-                    paramTypes = it.parameters.map { param -> (param.type as PsiType).canonicalText }
-                )
+                it.nameWithParams
             }
         }
 

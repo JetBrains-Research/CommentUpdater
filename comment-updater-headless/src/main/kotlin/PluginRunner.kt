@@ -24,9 +24,7 @@ import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
-import org.jetbrains.research.commentupdater.utils.PsiUtils
-import org.jetbrains.research.commentupdater.utils.qualifiedName
-import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import org.jetbrains.research.commentupdater.utils.*
 import kotlin.system.exitProcess
 
 
@@ -230,6 +228,8 @@ class CodeCommentExtractor : CliktCommand() {
                 lateinit var newCode: String
                 lateinit var oldComment: String
                 lateinit var newComment: String
+                lateinit var oldNameWithParam: MethodNameWithParam
+                lateinit var newNameWithParam: MethodNameWithParam
 
                 ApplicationManager.getApplication().runReadAction {
                     newMethodName = newMethod.qualifiedName
@@ -238,6 +238,8 @@ class CodeCommentExtractor : CliktCommand() {
                     newCode = newMethod.textWithoutDoc
                     oldComment = oldMethod.docComment?.text ?: ""
                     newComment = newMethod.docComment?.text ?: ""
+                    oldNameWithParam = oldMethod.nameWithParams
+                    newNameWithParam = newMethod.nameWithParams
                 }
 
                 val isSampleUnchanged = oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()
@@ -264,8 +266,8 @@ class CodeCommentExtractor : CliktCommand() {
                     newFileName = newFileName,
                     metric = metric,
                     commitTime = commit.timestamp.toString(),
-                    oldMethodName = oldMethodName,
-                    newMethodName = newMethodName
+                    oldMethodName = oldNameWithParam,
+                    newMethodName = newNameWithParam
                 )
 
                 writeMutex.withLock {
