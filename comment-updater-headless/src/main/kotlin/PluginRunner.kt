@@ -155,16 +155,16 @@ class CodeCommentExtractor : CliktCommand() {
             val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
             for (root in gitRoots) {
                 val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
-                runBlocking {
+                //runBlocking {
                     val commits = repo.walkAll()
                     statsHandler.numberOfCommits = commits.size
 
                     commits.map { commit ->
-                        async(Dispatchers.Default) {
+                        //async(Dispatchers.Default) {
                             processCommit(commit, project)
-                        }
-                    }.awaitAll()
-                }
+                        //}
+                    }//.awaitAll()
+                //}
 
             }
         } catch (e: Exception) {
@@ -174,7 +174,7 @@ class CodeCommentExtractor : CliktCommand() {
         }
     }
 
-    private suspend fun processCommit(
+    private fun processCommit(
         commit: GitCommit,
         project: Project
     ) {
@@ -202,7 +202,7 @@ class CodeCommentExtractor : CliktCommand() {
         }
     }
 
-    private suspend fun collectChange(
+    private fun collectChange(
         change: Change,
         commit: GitCommit,
         project: Project
@@ -268,9 +268,9 @@ class CodeCommentExtractor : CliktCommand() {
                     newMethodName = newMethodName
                 )
 
-                writeMutex.withLock {
+                //writeMutex.withLock {
                     sampleWriter.saveMetrics(datasetExample)
-                }
+                //}
 
             }
         }
