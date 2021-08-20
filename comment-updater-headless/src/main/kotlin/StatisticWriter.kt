@@ -18,11 +18,9 @@ class StatisticWriter(val output: File) {
 
     fun open() {
         writer = FileWriter(output, true)
-        writer.write("[")
     }
 
     fun close() {
-        writer.write("]")
         writer.close()
     }
 
@@ -30,6 +28,6 @@ class StatisticWriter(val output: File) {
         writer.write(
             gson.toJson(stats)
         )
-        writer.write(",")
+        writer.write("\n")
     }
 }
