@@ -24,6 +24,7 @@ import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.*
+import java.io.File
 import kotlin.system.exitProcess
 
 
@@ -331,8 +332,8 @@ class CodeCommentExtractor : CliktCommand() {
                     commitId = commit.id.toString(),
                     newFileName = newFileName,
                     commitTime = commit.timestamp.toString(),
-                    oldMethodName = oldMethodName,
-                    newMethodName = newMethodName
+                    oldMethodName = oldNameWithParam,
+                    newMethodName = newNameWithParam
                 )
 
                 writeMutex.withLock {
