@@ -8,10 +8,10 @@ import com.beust.klaxon.Klaxon
 import com.beust.klaxon.KlaxonException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.PsiMethod
+import org.jetbrains.research.commentupdater.models.jit.JITModelFeatureExtractor
 import org.jetbrains.research.commentupdater.models.ONNXTensorUtils
 import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
-import org.jetbrains.research.commentupdater.models.jit.JITModelFeatureExtractor
 import org.jetbrains.research.commentupdater.processors.CodeCommentTokenizer
 import java.io.File
 import java.lang.Integer.min
@@ -31,10 +31,11 @@ data class DataSample(
     val codeFeatures: List<List<List<Float>>>
 )
 
-class JITDetector {
-    private val LOG: Logger = Logger.getInstance(javaClass)
+const val TRUE_PROB = 0.5
 
-    val TRUE_PROB = 0.5
+class JITDetector {
+    private val logger: Logger = Logger.getInstance(javaClass)
+
     val env: OrtEnvironment
     val session: OrtSession
     val modelPathsConfig: ModelFilesConfig
@@ -42,16 +43,18 @@ class JITDetector {
     init {
         modelPathsConfig = ModelFilesConfig()
         env = OrtEnvironment.getEnvironment()
-        session = env.createSession(modelPathsConfig.JIT_ONNX_FILE, OrtSession.SessionOptions())
+        session = env.createSession(modelPathsConfig.jitOnnxFile, OrtSession.SessionOptions())
     }
 
     val embeddingConfig by lazy {
-        Klaxon().parse<EmbeddingConfig>(File(modelPathsConfig.EMBEDDING_FILE)) ?: throw KlaxonException(":(")
+        Klaxon().parse<EmbeddingConfig>(File(modelPathsConfig.embeddingFile)) ?: throw KlaxonException(":(")
     }
 
     fun getPaddedIds(
-        tokens: List<String>, vocab: MutableMap<String, Int>,
-        padToSize: Int?, paddingElement: Int
+        tokens: List<String>,
+        vocab: MutableMap<String, Int>,
+        padToSize: Int?,
+        paddingElement: Int
     ): List<Int> {
         val paddedTokens = if (padToSize != null) tokens.take(padToSize) else tokens
         val ids = paddedTokens.map {
@@ -142,8 +145,9 @@ class JITDetector {
             "code_features" to codeFeaturesTensor
         )
 
-        var probability: Float = 0f
-        session.run(inputs).use { results ->
+        var probability: Float
+        session.run(inputs).use {
+                results ->
             val modelOut = results[0] as OnnxTensor
             val zeroSoftmax = kotlin.math.exp(modelOut.floatBuffer[0])
             val oneSoftmax = kotlin.math.exp(modelOut.floatBuffer[1])
@@ -159,7 +163,7 @@ class JITDetector {
         codeLensTensor.close()
         codeFeaturesTensor.close()
 
-        LOG.info("[CommentUpdater] JIT model result: method ${newMethod.name}, probability: ${probability}")
+        logger.info("[CommentUpdater] JIT model result: method ${newMethod.name}, probability: $probability")
         return probability >= TRUE_PROB
     }
 

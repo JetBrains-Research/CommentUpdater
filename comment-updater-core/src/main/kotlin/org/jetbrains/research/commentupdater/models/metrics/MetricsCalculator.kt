@@ -36,7 +36,10 @@ class MetricsCalculator(config: ModelFilesConfig) {
     val simModel: SimilarityModel = SimilarityModel(config)
 
     fun calculateMetrics(
-        oldCode: String, newCode: String, oldComment: String, newComment: String,
+        oldCode: String,
+        newCode: String,
+        oldComment: String,
+        newComment: String,
         methodRefactorings: MutableList<Refactoring> = mutableListOf()
     ): MethodMetric? {
 

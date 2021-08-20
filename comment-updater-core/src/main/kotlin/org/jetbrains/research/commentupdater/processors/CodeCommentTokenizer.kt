@@ -52,7 +52,6 @@ object CodeCommentTokenizer {
             .map {
                 it.groupValues[0]
             }.toList()
-
     }
 
     private fun removeHTMLTag(line: String): String {
@@ -117,8 +116,4 @@ object CodeCommentTokenizer {
             it.text
         }.joinToString(" ")
     }
-
 }
-
-
-

@@ -23,12 +23,7 @@ import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
-import org.jetbrains.research.commentupdater.utils.PsiUtil
-import org.jetbrains.research.commentupdater.utils.qualifiedName
-import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import java.io.File
-import java.util.concurrent.*
-import kotlin.math.log
+import org.jetbrains.research.commentupdater.utils.*
 import kotlin.system.exitProcess
 
 
@@ -78,7 +73,8 @@ class CodeCommentExtractor : CliktCommand() {
 
     private val statsHandler = StatisticHandler()
 
-    private lateinit var metricsModel: MetricsCalculator
+    // Metric model
+    lateinit var metricsModel: MetricsCalculator
 
     private lateinit var timeOutHandler: TimeOutHandler
 
@@ -116,7 +112,6 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     override fun run() {
-        LOG.info("Logging startup")
         log(LogLevel.INFO, "Starting Application")
 
         val inputFile = dataset
@@ -186,19 +181,13 @@ class CodeCommentExtractor : CliktCommand() {
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)
         } catch (e: AlreadyDisposedException) {
             // TODO: figure out why this happened
-            println(e.message)
+            log(LogLevel.WARN, e.message.toString())
         }
 
     private fun collectProjectExamples(projectPath: String) {
 
         timeOutHandler.startOpening(projectPath)
         log(LogLevel.INFO, "Opening project...")
-        if (projectPath.endsWith("ex5"))
-        {
-            log(LogLevel.INFO, "Sleeping..")
-            Thread.sleep(1000 * 60);
-            log(LogLevel.INFO, "waking up..")
-        }
         val project = ProjectUtil.openOrImport(projectPath, null, true)
         timeOutHandler.endOpening(projectPath)
 
@@ -209,7 +198,7 @@ class CodeCommentExtractor : CliktCommand() {
         log(LogLevel.INFO, "Opened!")
 
         log(LogLevel.INFO, "Initializing vcs..")
-        val vcsManager = PsiUtil.vcsSetup(project, projectPath)
+        val vcsManager = PsiUtils.vcsSetup(project, projectPath)
         log(LogLevel.INFO, "Initialized!")
 
         val gitRepoManager = ServiceManager.getService(
@@ -304,6 +293,8 @@ class CodeCommentExtractor : CliktCommand() {
                 lateinit var newCode: String
                 lateinit var oldComment: String
                 lateinit var newComment: String
+                lateinit var oldNameWithParam: MethodNameWithParam
+                lateinit var newNameWithParam: MethodNameWithParam
 
                 ApplicationManager.getApplication().runReadAction {
                     newMethodName = newMethod.qualifiedName
@@ -312,11 +303,13 @@ class CodeCommentExtractor : CliktCommand() {
                     newCode = newMethod.textWithoutDoc
                     oldComment = oldMethod.docComment?.text ?: ""
                     newComment = newMethod.docComment?.text ?: ""
+                    oldNameWithParam = oldMethod.nameWithParams
+                    newNameWithParam = newMethod.nameWithParams
                 }
 
-                if (oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()) {
-                    continue
-                }
+                val isSampleUnchanged = oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()
+
+                if (isSampleUnchanged) continue
 
                 if (!MethodChangesExtractor.checkMethodChanged(
                         oldComment = oldComment,

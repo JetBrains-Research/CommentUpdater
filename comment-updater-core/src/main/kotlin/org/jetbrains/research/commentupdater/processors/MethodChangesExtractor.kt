@@ -61,8 +61,9 @@ object MethodChangesExtractor {
                     override fun visitDocComment(comment: PsiDocComment?) {
                         if (comment != null && comment.owner is PsiMethod) {
                             val name = (comment.owner as PsiMethod).qualifiedName
-                            if (name == oldName)
+                            if (name == oldName) {
                                 oldMethod = comment.owner as PsiMethod
+                            }
                         }
                         super.visitDocComment(comment)
                     }
@@ -75,7 +76,6 @@ object MethodChangesExtractor {
         }
         return null
     }
-
 
     fun getOldMethod(method: PsiMethod): PsiMethod? {
         val methodFullName = method.qualifiedName
@@ -96,8 +96,9 @@ object MethodChangesExtractor {
                         if (comment != null) {
                             if (comment.owner is PsiMethod) {
                                 val name = (comment.owner as PsiMethod).qualifiedName
-                                if (name == methodFullName)
+                                if (name == methodFullName) {
                                     oldMethod = comment.owner as PsiMethod
+                                }
                             }
                         }
                         super.visitDocComment(comment)
@@ -111,5 +112,4 @@ object MethodChangesExtractor {
         }
         return null
     }
-
 }

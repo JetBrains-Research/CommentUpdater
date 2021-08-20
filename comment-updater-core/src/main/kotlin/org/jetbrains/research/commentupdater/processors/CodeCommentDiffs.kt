@@ -11,60 +11,58 @@ data class EditNode(val editType: String, val children: MutableList<String>, var
  */
 object CodeCommentDiffs {
 
-    val REPLACE = "<REPLACE>"
-    val REPLACE_OLD = "<REPLACE_OLD>"
-    val REPLACE_NEW = "<REPLACE_NEW>"
-    val REPLACE_END = "<REPLACE_END>"
-    val REPLACE_OLD_KEEP_BEFORE = "<REPLACE_OLD_KEEP_BEFORE>"
-    val REPLACE_NEW_KEEP_BEFORE = "<REPLACE_NEW_KEEP_BEFORE>"
-    val REPLACE_OLD_KEEP_AFTER = "<REPLACE_OLD_KEEP_AFTER>"
-    val REPLACE_NEW_KEEP_AFTER = "<REPLACE_NEW_KEEP_AFTER>"
-    val REPLACE_OLD_DELETE_KEEP_BEFORE = "<REPLACE_OLD_DELETE_KEEP_BEFORE>"
-    val REPLACE_NEW_DELETE_KEEP_BEFORE = "<REPLACE_NEW_DELETE_KEEP_BEFORE>"
-    val REPLACE_OLD_DELETE_KEEP_AFTER = "<REPLACE_OLD_DELETE_KEEP_AFTER>"
-    val REPLACE_NEW_DELETE_KEEP_AFTER = "<REPLACE_NEW_DELETE_KEEP_AFTER>"
+    const val REPLACE = "<REPLACE>"
+    const val REPLACE_OLD = "<REPLACE_OLD>"
+    const val REPLACE_NEW = "<REPLACE_NEW>"
+    const val REPLACE_END = "<REPLACE_END>"
+    const val REPLACE_OLD_KEEP_BEFORE = "<REPLACE_OLD_KEEP_BEFORE>"
+    const val REPLACE_NEW_KEEP_BEFORE = "<REPLACE_NEW_KEEP_BEFORE>"
+    const val REPLACE_OLD_KEEP_AFTER = "<REPLACE_OLD_KEEP_AFTER>"
+    const val REPLACE_NEW_KEEP_AFTER = "<REPLACE_NEW_KEEP_AFTER>"
+    const val REPLACE_OLD_DELETE_KEEP_BEFORE = "<REPLACE_OLD_DELETE_KEEP_BEFORE>"
+    const val REPLACE_NEW_DELETE_KEEP_BEFORE = "<REPLACE_NEW_DELETE_KEEP_BEFORE>"
+    const val REPLACE_OLD_DELETE_KEEP_AFTER = "<REPLACE_OLD_DELETE_KEEP_AFTER>"
+    const val REPLACE_NEW_DELETE_KEEP_AFTER = "<REPLACE_NEW_DELETE_KEEP_AFTER>"
 
-    val INSERT = "<INSERT>"
-    val INSERT_OLD = "<INSERT_OLD>"
-    val INSERT_NEW = "<INSERT_NEW>"
-    val INSERT_END = "<INSERT_END>"
-    val INSERT_OLD_KEEP_BEFORE = "<INSERT_OLD_KEEP_BEFORE>"
-    val INSERT_NEW_KEEP_BEFORE = "<INSERT_NEW_KEEP_BEFORE>"
-    val INSERT_OLD_KEEP_AFTER = "<INSERT_OLD_KEEP_AFTER>"
-    val INSERT_NEW_KEEP_AFTER = "<INSERT_NEW_KEEP_AFTER>"
+    const val INSERT = "<INSERT>"
+    const val INSERT_OLD = "<INSERT_OLD>"
+    const val INSERT_NEW = "<INSERT_NEW>"
+    const val INSERT_END = "<INSERT_END>"
+    const val INSERT_OLD_KEEP_BEFORE = "<INSERT_OLD_KEEP_BEFORE>"
+    const val INSERT_NEW_KEEP_BEFORE = "<INSERT_NEW_KEEP_BEFORE>"
+    const val INSERT_OLD_KEEP_AFTER = "<INSERT_OLD_KEEP_AFTER>"
+    const val INSERT_NEW_KEEP_AFTER = "<INSERT_NEW_KEEP_AFTER>"
 
-    val DELETE = "<DELETE>"
-    val DELETE_END = "<DELETE_END>"
+    const val DELETE = "<DELETE>"
+    const val DELETE_END = "<DELETE_END>"
 
-    val KEEP = "<KEEP>"
-    val KEEP_END = "<KEEP_END>"
-    val COPY_SEQUENCE = "<COPY_SEQUENCE>"
+    const val KEEP = "<KEEP>"
+    const val KEEP_END = "<KEEP_END>"
+    const val COPY_SEQUENCE = "<COPY_SEQUENCE>"
 
     val REPLACE_KEYWORDS = listOf(
-        REPLACE,
-        REPLACE_OLD,
-        REPLACE_NEW,
-        REPLACE_END,
-        REPLACE_OLD_KEEP_BEFORE,
-        REPLACE_NEW_KEEP_BEFORE,
-        REPLACE_OLD_KEEP_AFTER,
-        REPLACE_NEW_KEEP_AFTER,
-        REPLACE_OLD_DELETE_KEEP_BEFORE,
-        REPLACE_NEW_DELETE_KEEP_BEFORE,
-        REPLACE_OLD_DELETE_KEEP_AFTER,
-        REPLACE_NEW_DELETE_KEEP_AFTER
-    )
+    REPLACE,
+    REPLACE_OLD,
+    REPLACE_NEW,
+    REPLACE_END,
+    REPLACE_OLD_KEEP_BEFORE,
+    REPLACE_NEW_KEEP_BEFORE,
+    REPLACE_OLD_KEEP_AFTER,
+    REPLACE_NEW_KEEP_AFTER,
+    REPLACE_OLD_DELETE_KEEP_BEFORE,
+    REPLACE_NEW_DELETE_KEEP_BEFORE,
+    REPLACE_OLD_DELETE_KEEP_AFTER,
+    REPLACE_NEW_DELETE_KEEP_AFTER)
 
     val INSERT_KEYWORDS = listOf(
-        INSERT,
-        INSERT_OLD,
-        INSERT_NEW,
-        INSERT_END,
-        INSERT_OLD_KEEP_BEFORE,
-        INSERT_NEW_KEEP_BEFORE,
-        INSERT_OLD_KEEP_AFTER,
-        INSERT_NEW_KEEP_AFTER
-    )
+    INSERT,
+    INSERT_OLD,
+    INSERT_NEW,
+    INSERT_END,
+    INSERT_OLD_KEEP_BEFORE,
+    INSERT_NEW_KEEP_BEFORE,
+    INSERT_OLD_KEEP_AFTER,
+    INSERT_NEW_KEEP_AFTER)
 
     val DELETE_KEYWORDS = listOf(DELETE, DELETE_END)
     val KEEP_KEYWORDS = listOf(KEEP, KEEP_END)
@@ -168,15 +166,13 @@ object CodeCommentDiffs {
     // can be safely deleted, don't need this method for detection
     fun computeMinimalCommentDiffs(oldTokens: List<String>, newTokens: List<String>): List<String> {
         val spans = mutableListOf<String>()
-        val tokens = mutableListOf<String>()
-        val commands = mutableListOf<String>()
 
         val oldText = oldTokens.joinToString(separator = " ")
         val diffNodes = getCoarseDiffStructure(oldTokens, newTokens)
 
         val newNodes = mutableListOf<EditNode>()
 
-        for ((index, node) in diffNodes.withIndex()) {
+        for (node in diffNodes) {
             if (node.editType == KEEP) {
                 newNodes.add(node)
             } else if (node.editType == DELETE) {
@@ -267,9 +263,9 @@ object CodeCommentDiffs {
                             ) == 1
                         }
                         if (foundSubString) {
-                            val newChildren =
-                                listOf<String>(REPLACE_OLD_KEEP_BEFORE) + adoptedChildren + repOldChildren +
-                                        listOf<String>(REPLACE_NEW_KEEP_BEFORE) + adoptedChildren + repNewChildren
+                            val newChildren = listOf(REPLACE_OLD_KEEP_BEFORE) + adoptedChildren +
+                                    repOldChildren + listOf(REPLACE_NEW_KEEP_BEFORE) +
+                                    adoptedChildren + repNewChildren
                             val newNode = EditNode(REPLACE, newChildren.toMutableList(), node.prev, node.next)
                             node.prev!!.next = newNode
                             if (node.next != null) {
@@ -381,17 +377,14 @@ object CodeCommentDiffs {
             }
         }
         return spans
-    }
+     }
 
     fun getFullReplaceSpan(oldTokens: List<String>, newTokens: List<String>): List<String> {
         return listOf(REPLACE_OLD) + oldTokens + listOf(REPLACE_NEW) + newTokens + listOf(REPLACE_END)
     }
 
-
-    fun computeCodeDiffs(
-        oldTokens: List<String>,
-        newTokens: List<String>
-    ): Triple<List<String>, List<String>, List<String>> {
+    fun computeCodeDiffs(oldTokens: List<String>, newTokens: List<String>):
+            Triple<List<String>, List<String>, List<String>> {
         val spans = mutableListOf<String>()
         val tokens = mutableListOf<String>()
         val commands = mutableListOf<String>()
@@ -406,10 +399,9 @@ object CodeCommentDiffs {
                 }
                 DeltaType.CHANGE -> {
                     spans.addAll(
-                        listOf(REPLACE_OLD) + delta.source.lines + listOf(REPLACE_NEW) + delta.target.lines + listOf(
-                            REPLACE_END
-                        )
-                    )
+                        listOf(REPLACE_OLD) + delta.source.lines +
+                                listOf(REPLACE_NEW) + delta.target.lines +
+                                listOf(REPLACE_END))
                     for (token in delta.source.lines) {
                         tokens.addAll(listOf(REPLACE_OLD, token))
                         commands.add(REPLACE_OLD)
@@ -437,5 +429,4 @@ object CodeCommentDiffs {
         }
         return Triple(spans, tokens, commands)
     }
-
 }
