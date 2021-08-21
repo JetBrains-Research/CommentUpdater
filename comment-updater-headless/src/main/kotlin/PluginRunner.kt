@@ -20,13 +20,19 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.eclipse.jgit.lib.Repository
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
-import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
-import org.jetbrains.research.commentupdater.utils.*
+import org.jetbrains.research.commentupdater.utils.PsiUtils
+import org.jetbrains.research.commentupdater.utils.qualifiedName
+import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import org.refactoringminer.api.Refactoring
+import org.refactoringminer.api.RefactoringHandler
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
+import org.refactoringminer.util.GitServiceImpl
 import kotlin.system.exitProcess
 
 
@@ -51,8 +57,11 @@ class CodeCommentExtractor : CliktCommand() {
 
     private val statsHandler = StatisticHandler()
 
-    // Metric model
-    lateinit var metricsModel: MetricsCalculator
+    private lateinit var metricsModel: MetricsCalculator
+
+    private val gitService = GitServiceImpl()
+    private val miner = GitHistoryRefactoringMinerImpl()
+    private lateinit var repo: Repository
 
     companion object {
         private val LOG: Logger =
@@ -88,6 +97,7 @@ class CodeCommentExtractor : CliktCommand() {
     }
 
     override fun run() {
+        LOG.info("Logging startup")
         log(LogLevel.INFO, "Starting Application")
 
         val inputFile = dataset
@@ -108,9 +118,8 @@ class CodeCommentExtractor : CliktCommand() {
             projectTag = rawSampleWriter.projectName
             projectProcess = "${index + 1}/${projectPaths.size}"
 
+            repo = gitService.openRepository(projectPath)
             try {
-                onStart()
-
                 collectProjectExamples(projectPath)
 
                 statisticWriter.saveStatistics(
@@ -135,9 +144,6 @@ class CodeCommentExtractor : CliktCommand() {
 
     }
 
-    private fun onStart() {
-        rawSampleWriter.open()
-    }
 
     private fun onFinish() {
         log(LogLevel.INFO, "Close project. ${statsHandler.reportSamples()}")
@@ -154,7 +160,7 @@ class CodeCommentExtractor : CliktCommand() {
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)
         } catch (e: AlreadyDisposedException) {
             // TODO: figure out why this happened
-            log(LogLevel.WARN, e.message.toString())
+            println(e.message)
         }
 
     private fun collectProjectExamples(projectPath: String) {
@@ -205,6 +211,20 @@ class CodeCommentExtractor : CliktCommand() {
         project: Project
     ) {
         try {
+            lateinit var allRefactorings: List<Refactoring>
+
+            val handler = object : RefactoringHandler() {
+                override fun handle(commitId: String, refactorings: List<Refactoring>) {
+                    println("Refactorings at $commitId")
+                    refactorings.forEach { ref ->
+                        println(ref.toString())
+                    }
+                    allRefactorings = refactorings
+                }
+            }
+
+            miner.detectAtCommit(repo, commit.id.toString(), handler)
+
             commit.filterChanges(".java").forEach { change ->
                 val fileName = change.afterRevision?.file?.name ?: ""
                 log(
@@ -214,7 +234,7 @@ class CodeCommentExtractor : CliktCommand() {
                     logThread = true
                 )
 
-                collectChange(change, commit, project)
+                collectChange(change, commit, allRefactorings, project)
             }
             statsHandler.processedCommits.incrementAndGet()
         } catch (e: Exception) {
@@ -231,17 +251,18 @@ class CodeCommentExtractor : CliktCommand() {
     private suspend fun collectChange(
         change: Change,
         commit: GitCommit,
+        allRefactorings: List<Refactoring>,
         project: Project
     ) {
         statsHandler.processedFileChanges.incrementAndGet()
 
         val newFileName = change.afterRevision?.file?.name ?: ""
 
-        val refactorings = RefactoringExtractor.extract(change)
+        val fileRefactorings = RefactoringExtractor.extract(change)
         val methodsStatistic = hashMapOf<String, Int>()
         val changedMethods = try {
             ProjectMethodExtractor.extractChangedMethods(
-                project, change, refactorings,
+                project, change, allRefactorings, fileRefactorings,
                 statisticContext = methodsStatistic
             )
         } catch (e: VcsException) {
@@ -253,54 +274,29 @@ class CodeCommentExtractor : CliktCommand() {
         statsHandler.numOfDocMethods.addAndGet(methodsStatistic["numOfDocMethods"]!!)
 
         changedMethods?.let {
-            for ((oldMethod, newMethod) in it) {
+            for ((newMethod, updateType) in it) {
                 statsHandler.processedMethods.incrementAndGet()
-                lateinit var newMethodName: String
-                lateinit var oldMethodName: String
-                lateinit var oldCode: String
-                lateinit var newCode: String
-                lateinit var oldComment: String
-                lateinit var newComment: String
-                lateinit var oldNameWithParam: MethodNameWithParam
-                lateinit var newNameWithParam: MethodNameWithParam
+                lateinit var methodName: String
+                lateinit var code: String
+                lateinit var comment: String
 
                 ApplicationManager.getApplication().runReadAction {
-                    newMethodName = newMethod.qualifiedName
-                    oldMethodName = oldMethod.qualifiedName
-                    oldCode = oldMethod.textWithoutDoc
-                    newCode = newMethod.textWithoutDoc
-                    oldComment = oldMethod.docComment?.text ?: ""
-                    newComment = newMethod.docComment?.text ?: ""
-                    oldNameWithParam = oldMethod.nameWithParams
-                    newNameWithParam = newMethod.nameWithParams
-                }
+                    methodName = newMethod.qualifiedName
+                    code = newMethod.textWithoutDoc
+                    comment = newMethod.docComment?.text ?: ""
 
-                val isSampleUnchanged = oldCode.trim() == newCode.trim() && oldComment.trim() == newComment.trim()
-
-                if (isSampleUnchanged) continue
-
-                if (!MethodChangesExtractor.checkMethodChanged(
-                        oldComment = oldComment,
-                        newComment = newComment,
-                        oldCode = oldCode,
-                        newCode = newCode
-                    )
-                ) {
-                    continue
                 }
 
                 statsHandler.foundExamples.incrementAndGet()
 
                 val datasetExample = RawDatasetSample(
-                    oldCode = oldCode,
-                    newCode = newCode,
-                    oldComment = oldComment,
-                    newComment = newComment,
+                    update = updateType,
                     commitId = commit.id.toString(),
                     newFileName = newFileName,
                     commitTime = commit.timestamp.toString(),
-                    oldMethodName = oldNameWithParam,
-                    newMethodName = newNameWithParam
+                    code = code,
+                    comment = comment,
+                    methodName = methodName
                 )
 
                 writeMutex.withLock {

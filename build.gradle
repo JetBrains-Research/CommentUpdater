@@ -32,6 +32,18 @@ allprojects {
         maven { url "https://www.jetbrains.com/intellij-repository/snapshots" }
     }
 
+    dependencies {
+        detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.17.0")
+    }
+
+    detekt {
+        allRules = true
+        parallel = true
+        config = files(("$rootProject.projectDir/detekt.yml"))
+        buildUponDefaultConfig = true
+        autoCorrect = true
+    }
+
     compileKotlin {
         kotlinOptions.jvmTarget = "1.8"
     }

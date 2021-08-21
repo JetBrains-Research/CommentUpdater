@@ -6,7 +6,7 @@ import git4idea.repo.GitRepository
 fun GitCommit.filterChanges(fileSuffix: String): List<Change> {
     return this.changes
         .filter {
-            it.afterRevision != null && it.beforeRevision != null
+            it.afterRevision != null
         }
         .filter {
             // not null and true

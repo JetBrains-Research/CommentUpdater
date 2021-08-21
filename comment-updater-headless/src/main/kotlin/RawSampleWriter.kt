@@ -16,17 +16,12 @@ class RawSampleWriter(output: File) {
 
     fun setProjectFile(projectPath: String) {
         projectName = projectPath.split('/').last()
-        projectFile = File(outputPath).resolve("${projectName}.json")
+        projectFile = File(outputPath).resolve("${projectName}.jsonl")
         projectFile.createNewFile()
         projectWriter = FileWriter(projectFile, true)
     }
 
-    fun open() {
-        projectFile.writeText("[")
-    }
-
     fun close() {
-        projectWriter.write("]")
         projectWriter.close()
 
         // Deleting last comma: [ex1, ex2, ex3,] -> [ex1, ex2, ex3]
@@ -44,6 +39,6 @@ class RawSampleWriter(output: File) {
         val jsonSample = gson.toJson(rawSample)
 
         projectWriter.write(jsonSample)
-        projectWriter.write(",")
+        projectWriter.write("\n")
     }
 }

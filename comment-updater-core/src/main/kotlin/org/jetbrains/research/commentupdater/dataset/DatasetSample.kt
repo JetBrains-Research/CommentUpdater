@@ -2,21 +2,22 @@ package org.jetbrains.research.commentupdater.dataset
 
 import com.beust.klaxon.Json
 import org.jetbrains.research.commentupdater.models.MethodMetric
-import org.jetbrains.research.commentupdater.utils.MethodNameWithParam
+
+enum class MethodUpdateType(@Json val typeName: String) {
+    ADD("ADD"),
+    MOVE("MOVE"),
+    CHANGE("CHANGE")
+}
 
 data class RawDatasetSample(
     @Json
-    val oldCode: String,
+    val update: MethodUpdateType,
     @Json
-    val newCode: String,
+    val code: String,
     @Json
-    val oldComment: String,
+    val comment: String,
     @Json
-    val newComment: String,
-    @Json
-    val oldMethodName: MethodNameWithParam,
-    @Json
-    val newMethodName: MethodNameWithParam,
+    val methodName: String,
     @Json
     val commitId: String,
     @Json
