@@ -4,6 +4,7 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import com.beust.klaxon.Klaxon
+import com.beust.klaxon.KlaxonException
 import org.jetbrains.research.commentupdater.models.ONNXTensorUtils
 import org.jetbrains.research.commentupdater.models.config.EmbeddingConfig
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
@@ -12,22 +13,23 @@ import org.ojalgo.function.constant.PrimitiveMath
 import org.ojalgo.matrix.store.Primitive64Store
 import java.io.File
 
+const val EMBEDDING_SIZE = 64
+
 class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
     val embeddingConfig: EmbeddingConfig
     val env: OrtEnvironment
     val codeEmbeddingsSession: OrtSession
     val commentEmbeddingSession: OrtSession
-    val EMBEDDING_SIZE = 64
 
     init {
-        embeddingConfig = Klaxon().parse<EmbeddingConfig>(File(modelPathsConfig.EMBEDDING_FILE))
-            ?: throw Exception("can't load embeddings")
+        embeddingConfig = Klaxon().parse<EmbeddingConfig>(File(modelPathsConfig.embeddingFile))
+            ?: throw KlaxonException("can't load embeddings")
 
         env = OrtEnvironment.getEnvironment()
         codeEmbeddingsSession =
-            env.createSession(modelPathsConfig.CODE_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
+            env.createSession(modelPathsConfig.codeEmbeddingOnnxFile, OrtSession.SessionOptions())
         commentEmbeddingSession =
-            env.createSession(modelPathsConfig.COMMENT_EMBEDDING_ONNX_FILE, OrtSession.SessionOptions())
+            env.createSession(modelPathsConfig.commentEmbeddingOnnxFile, OrtSession.SessionOptions())
     }
 
     /**
@@ -52,8 +54,9 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
         // Multiply embeddingA * embeddingB and then normalize by rows and columns
         // By multiplying with normalization matrices from left and right
         // cosSim = Norm1 * (E1 * E2.T) * Norm2
-        val cosSimMatrix =
-            normMatrixA.multiply(embeddingMatrixA.multiply(embeddingMatrixB.transpose())).multiply(normMatrixB)
+        val cosSimMatrix = normMatrixA.multiply(
+            embeddingMatrixA.multiply(embeddingMatrixB.transpose())
+                           ).multiply(normMatrixB)
 
         // Liu2018 similarity definition
         val simS1S2 = (0 until tokensA.size).sumOf { i ->
@@ -109,8 +112,9 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
             val inputs = mapOf("id" to idTensor)
             embeddings.run(inputs).use { results ->
                 val embedding = results[0] as OnnxTensor
+                val floatBuffer = embedding.floatBuffer
                 for (j in 0 until EMBEDDING_SIZE) {
-                    embeddingMatrix.set(i.toLong(), j.toLong(), embedding.floatBuffer[j].toDouble())
+                    embeddingMatrix.set(i.toLong(), j.toLong(), floatBuffer[j].toDouble())
                 }
             }
             idTensor?.close()

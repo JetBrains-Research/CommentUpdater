@@ -16,6 +16,15 @@ allprojects {
         plugin "io.gitlab.arturbosch.detekt"
     }
 
+    detekt {
+        allRules = true
+        parallel = true
+        config = files(("$rootProject.projectDir/detekt.yml"))
+        buildUponDefaultConfig = true
+        autoCorrect = true
+    }
+
+
     repositories {
         mavenCentral()
         jcenter()
@@ -46,6 +55,7 @@ allprojects {
     dependencies {
         implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
         implementation 'com.github.tsantalis:refactoring-miner:2.1.0'
+        detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.17.0")
     }
 
     intellij {

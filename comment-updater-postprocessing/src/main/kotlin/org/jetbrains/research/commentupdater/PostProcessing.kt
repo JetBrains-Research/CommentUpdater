@@ -1,15 +1,14 @@
+
 import com.beust.klaxon.Klaxon
+import com.beust.klaxon.KlaxonException
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.file
+import com.google.gson.Gson
+import com.google.gson.stream.JsonReader
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.diagnostic.Logger
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.jetbrains.research.commentupdater.SampleWriter
 import org.jetbrains.research.commentupdater.StatisticHandler
 import org.jetbrains.research.commentupdater.dataset.CommentUpdateLabel
@@ -19,7 +18,9 @@ import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import java.io.EOFException
 import java.io.File
+import java.io.FileInputStream
 import kotlin.system.exitProcess
 
 class MethodBranchHandler {
@@ -77,9 +78,10 @@ class PostProcessing : CliktCommand() {
     private lateinit var sampleWriter: SampleWriter
     private val writeMutex = Mutex()
     private val statisticHandler = StatisticHandler()
+    private val gson = Gson()
 
     private val dataset by argument("Path to dataset").file(canBeFile = false, mustExist = true)
-    private val output by argument("Path to output file").file()
+    private val output by argument("Path to output dir").file(canBeFile = false)
     private val config by argument("Path to Model config").file(mustExist = true, canBeFile = false)
 
     companion object {
@@ -102,6 +104,7 @@ class PostProcessing : CliktCommand() {
             when (level) {
                 LogLevel.INFO -> {
                     println(fullLogMessage)
+                    System.out.flush()
                 }
                 LogLevel.WARN -> {
                     System.err.println(fullLogMessage)
@@ -117,40 +120,47 @@ class PostProcessing : CliktCommand() {
 
         metricsModel = MetricsCalculator(ModelFilesConfig(config))
         sampleWriter = SampleWriter(output)
-        sampleWriter.open()
         LOG.info("Logging startup")
         log(LogLevel.INFO, "Starting postprocessing")
-        runBlocking {
-            val projects = getProjectDataPaths(dataset)
-            statisticHandler.numOfProjects = projects.size
+        val projects = getProjectDataPaths(dataset, output)
+        statisticHandler.numOfProjects = projects.size
 
-            projects.map {
-                async(Dispatchers.Default) {
-                    try {
-                        processProject(it)
-                        statisticHandler.processedProjects.incrementAndGet()
-                        log(LogLevel.INFO, "Processed ${statisticHandler.processedSamples}")
-                    } catch(e: Exception) {
-                        log(LogLevel.WARN, "Failed to process project $it due to $e")
-                    }
-                }
-            }.awaitAll()
+        projects.mapIndexed { index, it ->
+            val projectName = it.split(File.separator).last().split('.').first()
+            try {
+                sampleWriter.open(projectName)
+                processProject(it)
+                statisticHandler.processedProjects.incrementAndGet()
+                log(LogLevel.INFO, "Processed project $index/${projects.size} [$projectName] " +
+                        "${statisticHandler.processedSamples}")
+                sampleWriter.close(projectName)
+            } catch(e: KlaxonException) {
+                log(LogLevel.WARN, "Failed to open project [$projectName] due to $e")
+            } catch (e: Exception) {
+                log(LogLevel.WARN, "Failed to process project [$projectName] due to $e")
+            }
         }
         log(LogLevel.INFO, "Finished postprocessing. ${statisticHandler.report()}")
-        sampleWriter.close()
         exitProcess(0)
     }
 
 
-    private fun getProjectDataPaths(dataset: File): List<String> {
+    private fun getProjectDataPaths(dataset: File, output: File): List<String> {
         // make list of all files in directory from arg
-
-        return dataset.listFiles()?.map { it.path } ?: emptyList()
+        val processedProjects = output.listFiles()?.map { it.path.split(File.separator).last() } ?: emptyList()
+        return dataset.listFiles()?.map { it.path }?.filter {
+            !processedProjects.contains(it.split(File.separator).last())
+        } ?: emptyList()
     }
 
-    private suspend fun processProject(projectPath: String) {
+    private fun processProject(projectPath: String) {
+        val projectName = projectPath.split(File.separator).last().split('.').first()
+        log(LogLevel.INFO, "Processing [$projectName]...")
         // From newest commit to oldest!
+
+        log(LogLevel.INFO, "Reading...")
         val orderedSamples = readSamples(projectPath).sortedBy { -it.commitTime.toLong() }
+        log(LogLevel.INFO, "Read!")
 
         orderedSamples.forEach { sample ->
             if (sample.oldMethodName != sample.newMethodName) {
@@ -178,11 +188,9 @@ class PostProcessing : CliktCommand() {
                         newCommit = futureSample.commitId,
                         newFileName = sample.newFileName
                     )
-                    writeMutex.withLock {
-                        datasetSample?.let {
-                            sampleWriter.writeSample(it)
-                            statisticHandler.inconsistenciesCounter.incrementAndGet()
-                        }
+                    datasetSample?.let {
+                        sampleWriter.writeSample(it, projectName)
+                        statisticHandler.inconsistenciesCounter.incrementAndGet()
                     }
                 }
             } else if (codeChanged) {
@@ -199,11 +207,9 @@ class PostProcessing : CliktCommand() {
                         newCommit = "",
                         newFileName = sample.newFileName
                     )
-                    writeMutex.withLock {
-                        datasetSample?.let {
-                            sampleWriter.writeSample(it)
-                            statisticHandler.consistenciesCounter.incrementAndGet()
-                        }
+                    datasetSample?.let {
+                        sampleWriter.writeSample(it, projectName)
+                        statisticHandler.consistenciesCounter.incrementAndGet()
                     }
                 }
             } else if (commentChanged) {
@@ -256,14 +262,27 @@ class PostProcessing : CliktCommand() {
     }
 
     private fun readSamples(projectPath: String): List<RawDatasetSample> {
-        val projectFile = File(projectPath)
-        val textDataset = projectFile.readText()
-        if (textDataset.length == 2) {
+        val inputStream = FileInputStream(projectPath)
+
+        val reader = JsonReader(inputStream.reader())
+        reader.isLenient = true
+        try {
+            reader.use {
+                it.beginArray()
+                val result = mutableListOf<RawDatasetSample>()
+                while (it.hasNext()) {
+                    val sample = try {
+                        gson.fromJson<RawDatasetSample>(it, RawDatasetSample::class.java)
+                    } catch (e: NullPointerException) {
+                        null
+                    } ?: continue
+                    result.add(sample)
+                }
+                return result
+            }
+        } catch (e: EOFException) {
+            // empty json file
             return emptyList()
         }
-
-        // You have to delete one last comma manually, to open json file :)
-        val fixedDataset = textDataset.dropLast(2) + "]"
-        return klaxon.parseArray<RawDatasetSample>(fixedDataset) ?: emptyList()
     }
 }

@@ -23,6 +23,14 @@ class RawSampleWriter(output: File) {
 
     fun close() {
         projectWriter.close()
+
+        // Deleting last comma: [ex1, ex2, ex3,] -> [ex1, ex2, ex3]
+        // Is there a better way? I can't use seek without RandomAccessFiles
+        val fileContent = projectFile.readText()
+        if (fileContent.isEmpty())
+            return
+        val correctedFileContent = projectFile.readText().dropLast(2) + "]"
+        projectFile.writeText(correctedFileContent)
     }
 
     fun saveMetrics(
