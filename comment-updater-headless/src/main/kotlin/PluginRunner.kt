@@ -14,14 +14,16 @@ import com.intellij.serviceContainer.AlreadyDisposedException
 import git4idea.GitCommit
 import git4idea.GitVcs
 import git4idea.repo.GitRepositoryManager
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.eclipse.jgit.lib.Repository
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
-import org.jetbrains.research.commentupdater.processors.MethodChangesExtractor
 import org.jetbrains.research.commentupdater.processors.ProjectMethodExtractor
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.PsiUtils
@@ -31,7 +33,6 @@ import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringHandler
 import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
 import org.refactoringminer.util.GitServiceImpl
-import java.util.concurrent.*
 import kotlin.system.exitProcess
 
 
