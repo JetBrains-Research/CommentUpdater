@@ -7,12 +7,12 @@ import java.io.Writer
 class RawSampleWriter(output: File) {
 
     // Saving data
-    val outputPath = output.path
+    private val outputPath: String = output.path
 
-    lateinit var projectFile: File
-    lateinit var projectWriter: Writer
+    private lateinit var projectFile: File
+    private lateinit var projectWriter: Writer
     lateinit var projectName: String
-    val gson = Gson()
+    private val gson = Gson()
 
     fun setProjectFile(projectPath: String) {
         projectName = projectPath.split('/').last()
@@ -23,14 +23,6 @@ class RawSampleWriter(output: File) {
 
     fun close() {
         projectWriter.close()
-
-        // Deleting last comma: [ex1, ex2, ex3,] -> [ex1, ex2, ex3]
-        // Is there a better way? I can't use seek without RandomAccessFiles
-        val fileContent = projectFile.readText()
-        if (fileContent.isEmpty())
-            return
-        val correctedFileContent = projectFile.readText().dropLast(2) + "]"
-        projectFile.writeText(correctedFileContent)
     }
 
     fun saveMetrics(

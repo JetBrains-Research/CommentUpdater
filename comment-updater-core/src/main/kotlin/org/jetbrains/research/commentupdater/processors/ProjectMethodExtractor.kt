@@ -63,7 +63,10 @@ object ProjectMethodExtractor {
 
             if (!oldMethodsWithNames.containsKey(beforeName)) {
                 val isNew =
-                    allRefactorings.filter { it.refactoringType == RefactoringType.MOVE_OPERATION || it.refactoringType == RefactoringType.MOVE_AND_RENAME_OPERATION }
+                    allRefactorings.filter {
+                        it.refactoringType == RefactoringType.MOVE_OPERATION ||
+                                it.refactoringType == RefactoringType.MOVE_AND_RENAME_OPERATION
+                    }
                         .all { ref ->
                             val refactoring = (ref as MoveOperationRefactoring)
                             val newFullName =
@@ -119,8 +122,8 @@ object ProjectMethodExtractor {
     ): Map<MethodNameWithParam, PsiMethod> {
         lateinit var psiFile: PsiFile
         lateinit var methodsWithNames: Map<MethodNameWithParam, PsiMethod>
-        var numOfMethods: Int = 0
-        var numOfDocMethods: Int = 0
+        var numOfMethods = 0
+        var numOfDocMethods = 0
 
         ApplicationManager.getApplication().runReadAction {
             psiFile = PsiFileFactory.getInstance(project).createFileFromText(
