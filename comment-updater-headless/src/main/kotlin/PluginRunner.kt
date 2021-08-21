@@ -17,6 +17,7 @@ import git4idea.repo.GitRepositoryManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.eclipse.jgit.lib.Repository
 import org.jetbrains.research.commentupdater.dataset.RawDatasetSample
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
@@ -26,6 +27,10 @@ import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
 import org.jetbrains.research.commentupdater.utils.PsiUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
+import org.refactoringminer.api.Refactoring
+import org.refactoringminer.api.RefactoringHandler
+import org.refactoringminer.rm1.GitHistoryRefactoringMinerImpl
+import org.refactoringminer.util.GitServiceImpl
 import java.util.concurrent.*
 import kotlin.system.exitProcess
 
@@ -52,6 +57,10 @@ class CodeCommentExtractor : CliktCommand() {
     private val statsHandler = StatisticHandler()
 
     private lateinit var metricsModel: MetricsCalculator
+
+    private val gitService = GitServiceImpl()
+    private val miner = GitHistoryRefactoringMinerImpl()
+    private lateinit var repo: Repository
 
     companion object {
         private val LOG: Logger =
@@ -108,6 +117,7 @@ class CodeCommentExtractor : CliktCommand() {
             projectTag = rawSampleWriter.projectName
             projectProcess = "${index + 1}/${projectPaths.size}"
 
+            repo = gitService.openRepository(projectPath)
             try {
                 collectProjectExamples(projectPath)
 
@@ -144,7 +154,7 @@ class CodeCommentExtractor : CliktCommand() {
      * Function to close project. The close should be forced to avoid physical changes to data.
      * TODO: Avoid using extended API (check if available in community version)
      */
-   fun closeProject(project: Project) =
+    fun closeProject(project: Project) =
         try {
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)
         } catch (e: AlreadyDisposedException) {
@@ -200,6 +210,20 @@ class CodeCommentExtractor : CliktCommand() {
         project: Project
     ) {
         try {
+            lateinit var allRefactorings: List<Refactoring>
+
+            val handler = object : RefactoringHandler() {
+                override fun handle(commitId: String, refactorings: List<Refactoring>) {
+                    println("Refactorings at $commitId")
+                    refactorings.forEach { ref ->
+                        println(ref.toString())
+                    }
+                    allRefactorings = refactorings
+                }
+            }
+
+            miner.detectAtCommit(repo, commit.id.toString(), handler)
+
             commit.filterChanges(".java").forEach { change ->
                 val fileName = change.afterRevision?.file?.name ?: ""
                 log(
@@ -209,7 +233,7 @@ class CodeCommentExtractor : CliktCommand() {
                     logThread = true
                 )
 
-                collectChange(change, commit, project)
+                collectChange(change, commit, allRefactorings, project)
             }
             statsHandler.processedCommits.incrementAndGet()
         } catch (e: Exception) {
@@ -226,13 +250,14 @@ class CodeCommentExtractor : CliktCommand() {
     private suspend fun collectChange(
         change: Change,
         commit: GitCommit,
+        allRefactorings: List<Refactoring>,
         project: Project
     ) {
         statsHandler.processedFileChanges.incrementAndGet()
 
         val newFileName = change.afterRevision?.file?.name ?: ""
 
-        val refactorings = RefactoringExtractor.extract(change)
+        val fileRefactorings = RefactoringExtractor.extract(change)
         val methodsStatistic = hashMapOf<String, Int>()
         val changedMethods = try {
             ProjectMethodExtractor.extractChangedMethods(

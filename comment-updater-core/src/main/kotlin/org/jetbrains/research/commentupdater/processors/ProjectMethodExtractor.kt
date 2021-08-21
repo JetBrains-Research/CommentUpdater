@@ -15,8 +15,6 @@ import org.jetbrains.research.commentupdater.utils.MethodNameWithParam
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 import org.jetbrains.research.commentupdater.utils.textWithoutDoc
-import org.jetbrains.research.commentupdater.utils.qualifiedName
-import org.jetbrains.research.commentupdater.utils.textWithoutDoc
 import org.jetbrains.research.commentupdater.utils.nameWithParams
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
@@ -115,7 +113,8 @@ object ProjectMethodExtractor {
     }
 
     private fun extractMethodsWithFullNames(
-        project: Project, content: String,
+        project: Project,
+        content: String,
         statisticContext: HashMap<String, Int> = hashMapOf()
     ): Map<MethodNameWithParam, PsiMethod> {
         lateinit var psiFile: PsiFile
@@ -138,7 +137,6 @@ object ProjectMethodExtractor {
             numOfMethods = fileMethods.size
             numOfDocMethods = fileMethods.filter { it.docComment != null }.size
         }
-
 
         statisticContext["numOfMethods"] = numOfMethods
         statisticContext["numOfDocMethods"] = numOfDocMethods
