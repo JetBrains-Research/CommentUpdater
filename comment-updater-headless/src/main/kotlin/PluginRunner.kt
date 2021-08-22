@@ -211,7 +211,7 @@ class CodeCommentExtractor : CliktCommand() {
         project: Project
     ) {
         try {
-            lateinit var allRefactorings: List<Refactoring>
+            var allRefactorings: List<Refactoring> = emptyList()
 
             val handler = object : RefactoringHandler() {
                 override fun handle(commitId: String, refactorings: List<Refactoring>) {
