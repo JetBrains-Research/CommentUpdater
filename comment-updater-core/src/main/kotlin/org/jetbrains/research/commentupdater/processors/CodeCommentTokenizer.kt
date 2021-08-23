@@ -1,6 +1,8 @@
 package org.jetbrains.research.commentupdater.processors
 
-import com.intellij.psi.*
+import com.intellij.psi.PsiComment
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.javadoc.PsiDocTag
 import com.intellij.psi.javadoc.PsiDocToken
 import com.intellij.psi.util.PsiTreeUtil
@@ -106,8 +108,10 @@ object CodeCommentTokenizer {
 
     fun extractMethodCode(method: PsiMethod): String {
         return method.children.filter {
-            !PsiTreeUtil.instanceOf(it, PsiComment::class.java, PsiWhiteSpace::class.java,
-                PsiDocTag::class.java, PsiDocToken::class.java)
+            !PsiTreeUtil.instanceOf(
+                it, PsiComment::class.java, PsiWhiteSpace::class.java,
+                PsiDocTag::class.java, PsiDocToken::class.java
+            )
         }.map {
             it.text
         }.joinToString(" ")

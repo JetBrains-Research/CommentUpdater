@@ -15,11 +15,11 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <appStarter implementation="PluginRunner"/>
-<!--        <localInspection language="JAVA"-->
-<!--                         displayName="The comment is outdated"-->
-<!--                         groupName="Comment inconsistency"-->
-<!--                         enabledByDefault="true"-->
-<!--                         level="WARNING"-->
-<!--                         implementationClass="CodeCommentInspection"/>-->
+        <!--        <localInspection language="JAVA"-->
+        <!--                         displayName="The comment is outdated"-->
+        <!--                         groupName="Comment inconsistency"-->
+        <!--                         enabledByDefault="true"-->
+        <!--                         level="WARNING"-->
+        <!--                         implementationClass="CodeCommentInspection"/>-->
     </extensions>
 </idea-plugin>

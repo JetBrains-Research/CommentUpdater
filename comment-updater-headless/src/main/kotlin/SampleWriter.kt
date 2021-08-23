@@ -37,7 +37,8 @@ class SampleWriter(output: File) {
         projectFile.writeText(correctedFileContent)
     }
 
-    fun saveMetrics(datasetSample: DatasetSample
+    fun saveMetrics(
+        datasetSample: DatasetSample
     ) {
         val jsonExample = gson.toJson(datasetSample)
         projectWriter.write(jsonExample)

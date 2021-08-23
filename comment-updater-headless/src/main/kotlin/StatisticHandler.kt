@@ -12,7 +12,7 @@ class StatisticHandler {
     var totalExamplesNumber = AtomicInteger(0)
     var numberOfCommits = 0
 
-    fun report() :String {
+    fun report(): String {
         return "Found ${foundExamples.get()} examples," +
                 " processed: commits ${processedCommits.get()} methods ${processedMethods.get()}" +
                 " file changes ${processedFileChanges.get()}"

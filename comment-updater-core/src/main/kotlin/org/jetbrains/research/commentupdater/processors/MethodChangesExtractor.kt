@@ -5,7 +5,9 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeListManager
-import com.intellij.psi.*
+import com.intellij.psi.JavaRecursiveElementVisitor
+import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.javadoc.PsiDocComment
 import org.jetbrains.research.commentupdater.utils.qualifiedName
 

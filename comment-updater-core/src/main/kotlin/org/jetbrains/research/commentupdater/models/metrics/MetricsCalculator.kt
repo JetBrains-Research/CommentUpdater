@@ -72,8 +72,7 @@ class MetricsCalculator(config: ModelFilesConfig) {
             }
         }
 
-        val filterSubTokens = {
-            subToken: String ->
+        val filterSubTokens = { subToken: String ->
             val hasLetters: Boolean = subToken.any { it.isLetter() }
             hasLetters
         }

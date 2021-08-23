@@ -149,7 +149,7 @@ class CodeCommentExtractor : CliktCommand() {
             GitRepositoryManager::class.java
         )
 
-        try{
+        try {
             val gitRoots = vcsManager.getRootsUnderVcs(GitVcs.getInstance(project))
             for (root in gitRoots) {
                 val repo = gitRepoManager.getRepositoryForRoot(root) ?: continue
