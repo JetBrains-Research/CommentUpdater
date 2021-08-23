@@ -7,7 +7,6 @@ import com.intellij.openapi.vcs.changes.Change
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiType
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.research.commentupdater.utils.MethodNameWithParam
 import org.jetbrains.research.commentupdater.utils.RefactoringUtils
@@ -35,11 +34,9 @@ object ProjectMethodExtractor {
 
         val newMethodsWithNames = extractMethodsWithFullNames(project, after)
 
-        newMethodsWithNames.forEach {
-            afterName, newMethod ->
+        newMethodsWithNames.forEach { afterName, newMethod ->
             val beforeName = renameMapping.getOrElse(afterName) { afterName }
-            oldMethodsWithNames.get(beforeName)?.let {
-                oldMethod ->
+            oldMethodsWithNames.get(beforeName)?.let { oldMethod ->
                 changedMethodPairs.add(oldMethod to newMethod)
             }
         }
@@ -47,8 +44,10 @@ object ProjectMethodExtractor {
         return changedMethodPairs
     }
 
-    private fun extractMethodsWithFullNames(project: Project, content: String,
-    statisticContext: HashMap<String, Int> = hashMapOf()): Map<MethodNameWithParam, PsiMethod> {
+    private fun extractMethodsWithFullNames(
+        project: Project, content: String,
+        statisticContext: HashMap<String, Int> = hashMapOf()
+    ): Map<MethodNameWithParam, PsiMethod> {
         lateinit var psiFile: PsiFile
         lateinit var methodsWithNames: Map<MethodNameWithParam, PsiMethod>
         var numOfMethods: Int = 0

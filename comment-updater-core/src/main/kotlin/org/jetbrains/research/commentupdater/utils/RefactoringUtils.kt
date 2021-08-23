@@ -15,9 +15,9 @@ object RefactoringUtils {
         // If two refactorings of the same method happen, hashmap(list) will just pick last value of the same key
         val namesPairs = refactorings.filter {
             it.refactoringType == RefactoringType.RENAME_METHOD ||
-            it.refactoringType == RefactoringType.CHANGE_PARAMETER_TYPE ||
-            it.refactoringType == RefactoringType.ADD_PARAMETER ||
-            it.refactoringType == RefactoringType.REMOVE_PARAMETER
+                    it.refactoringType == RefactoringType.CHANGE_PARAMETER_TYPE ||
+                    it.refactoringType == RefactoringType.ADD_PARAMETER ||
+                    it.refactoringType == RefactoringType.REMOVE_PARAMETER
         }.map {
             val (operationAfter, operationBefore) = when (it) {
                 is RenameOperationRefactoring -> {

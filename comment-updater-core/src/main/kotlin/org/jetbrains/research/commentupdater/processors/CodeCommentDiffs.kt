@@ -41,28 +41,30 @@ object CodeCommentDiffs {
     const val COPY_SEQUENCE = "<COPY_SEQUENCE>"
 
     val REPLACE_KEYWORDS = listOf(
-    REPLACE,
-    REPLACE_OLD,
-    REPLACE_NEW,
-    REPLACE_END,
-    REPLACE_OLD_KEEP_BEFORE,
-    REPLACE_NEW_KEEP_BEFORE,
-    REPLACE_OLD_KEEP_AFTER,
-    REPLACE_NEW_KEEP_AFTER,
-    REPLACE_OLD_DELETE_KEEP_BEFORE,
-    REPLACE_NEW_DELETE_KEEP_BEFORE,
-    REPLACE_OLD_DELETE_KEEP_AFTER,
-    REPLACE_NEW_DELETE_KEEP_AFTER)
+        REPLACE,
+        REPLACE_OLD,
+        REPLACE_NEW,
+        REPLACE_END,
+        REPLACE_OLD_KEEP_BEFORE,
+        REPLACE_NEW_KEEP_BEFORE,
+        REPLACE_OLD_KEEP_AFTER,
+        REPLACE_NEW_KEEP_AFTER,
+        REPLACE_OLD_DELETE_KEEP_BEFORE,
+        REPLACE_NEW_DELETE_KEEP_BEFORE,
+        REPLACE_OLD_DELETE_KEEP_AFTER,
+        REPLACE_NEW_DELETE_KEEP_AFTER
+    )
 
     val INSERT_KEYWORDS = listOf(
-    INSERT,
-    INSERT_OLD,
-    INSERT_NEW,
-    INSERT_END,
-    INSERT_OLD_KEEP_BEFORE,
-    INSERT_NEW_KEEP_BEFORE,
-    INSERT_OLD_KEEP_AFTER,
-    INSERT_NEW_KEEP_AFTER)
+        INSERT,
+        INSERT_OLD,
+        INSERT_NEW,
+        INSERT_END,
+        INSERT_OLD_KEEP_BEFORE,
+        INSERT_NEW_KEEP_BEFORE,
+        INSERT_OLD_KEEP_AFTER,
+        INSERT_NEW_KEEP_AFTER
+    )
 
     val DELETE_KEYWORDS = listOf(DELETE, DELETE_END)
     val KEEP_KEYWORDS = listOf(KEEP, KEEP_END)
@@ -377,7 +379,7 @@ object CodeCommentDiffs {
             }
         }
         return spans
-     }
+    }
 
     fun getFullReplaceSpan(oldTokens: List<String>, newTokens: List<String>): List<String> {
         return listOf(REPLACE_OLD) + oldTokens + listOf(REPLACE_NEW) + newTokens + listOf(REPLACE_END)
@@ -401,7 +403,8 @@ object CodeCommentDiffs {
                     spans.addAll(
                         listOf(REPLACE_OLD) + delta.source.lines +
                                 listOf(REPLACE_NEW) + delta.target.lines +
-                                listOf(REPLACE_END))
+                                listOf(REPLACE_END)
+                    )
                     for (token in delta.source.lines) {
                         tokens.addAll(listOf(REPLACE_OLD, token))
                         commands.add(REPLACE_OLD)

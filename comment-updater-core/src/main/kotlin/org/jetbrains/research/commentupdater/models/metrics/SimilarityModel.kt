@@ -56,7 +56,7 @@ class SimilarityModel(modelPathsConfig: ModelFilesConfig) {
         // cosSim = Norm1 * (E1 * E2.T) * Norm2
         val cosSimMatrix = normMatrixA.multiply(
             embeddingMatrixA.multiply(embeddingMatrixB.transpose())
-                           ).multiply(normMatrixB)
+        ).multiply(normMatrixB)
 
         // Liu2018 similarity definition
         val simS1S2 = (0 until tokensA.size).sumOf { i ->

@@ -1,4 +1,3 @@
-
 import com.beust.klaxon.Klaxon
 import com.beust.klaxon.KlaxonException
 import com.github.ajalt.clikt.core.CliktCommand
@@ -18,6 +17,7 @@ import org.jetbrains.research.commentupdater.models.MethodMetric
 import org.jetbrains.research.commentupdater.models.MetricsCalculator
 import org.jetbrains.research.commentupdater.models.config.ModelFilesConfig
 import org.jetbrains.research.commentupdater.processors.RefactoringExtractor
+import org.jetbrains.research.commentupdater.utils.MethodNameWithParam
 import java.io.EOFException
 import java.io.File
 import java.io.FileInputStream
@@ -26,9 +26,9 @@ import kotlin.system.exitProcess
 class MethodBranchHandler {
     var newBranch: Int = 0
     private val branchToInconsistencySample = hashMapOf<Int, RawDatasetSample>()
-    private val methodToBranch = hashMapOf<String, Int>()
+    private val methodToBranch = hashMapOf<MethodNameWithParam, Int>()
     private val branchSpoiled = hashMapOf<Int, Boolean>()
-    fun branchId(methodName: String): Int {
+    fun branchId(methodName: MethodNameWithParam): Int {
         if (!methodToBranch.containsKey(methodName)) {
             methodToBranch[methodName] = ++newBranch
             branchSpoiled[newBranch] = false
@@ -53,7 +53,7 @@ class MethodBranchHandler {
         branchSpoiled[branch] = isSpoiled
     }
 
-    fun registerNameChange(oldName: String, newName: String) {
+    fun registerNameChange(oldName: MethodNameWithParam, newName: MethodNameWithParam) {
         val oldId = branchId(oldName)
         methodToBranch[newName] = oldId
         methodToBranch.remove(oldName)
@@ -131,10 +131,12 @@ class PostProcessing : CliktCommand() {
                 sampleWriter.open(projectName)
                 processProject(it)
                 statisticHandler.processedProjects.incrementAndGet()
-                log(LogLevel.INFO, "Processed project $index/${projects.size} [$projectName] " +
-                        "${statisticHandler.processedSamples}")
+                log(
+                    LogLevel.INFO, "Processed project $index/${projects.size} [$projectName] " +
+                            "${statisticHandler.processedSamples}"
+                )
                 sampleWriter.close(projectName)
-            } catch(e: KlaxonException) {
+            } catch (e: KlaxonException) {
                 log(LogLevel.WARN, "Failed to open project [$projectName] due to $e")
             } catch (e: Exception) {
                 log(LogLevel.WARN, "Failed to process project [$projectName] due to $e")
