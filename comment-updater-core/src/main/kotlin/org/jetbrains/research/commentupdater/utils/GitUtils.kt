@@ -10,7 +10,7 @@ fun GitCommit.filterChanges(fileSuffix: String): List<Change> {
         }
         .filter {
             // not null and true
-            it.virtualFile?.name?.endsWith(fileSuffix) == true
+            it.afterRevision?.file?.name?.endsWith(fileSuffix) == true
         }
 }
 
