@@ -15,5 +15,5 @@ fun GitCommit.filterChanges(fileSuffix: String): List<Change> {
 }
 
 fun GitRepository.walkAll(): List<GitCommit> {
-    return GitHistoryUtils.history(this.project, this.root, "--all")
+    return GitHistoryUtils.history(this.project, this.root)
 }
