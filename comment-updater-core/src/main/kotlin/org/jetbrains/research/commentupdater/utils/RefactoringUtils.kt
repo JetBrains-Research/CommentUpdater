@@ -1,9 +1,6 @@
 package org.jetbrains.research.commentupdater.utils
 
-import gr.uom.java.xmi.diff.AddParameterRefactoring
-import gr.uom.java.xmi.diff.ChangeVariableTypeRefactoring
-import gr.uom.java.xmi.diff.RemoveParameterRefactoring
-import gr.uom.java.xmi.diff.RenameOperationRefactoring
+import gr.uom.java.xmi.diff.*
 import org.refactoringminer.api.Refactoring
 import org.refactoringminer.api.RefactoringType
 
@@ -49,5 +46,24 @@ object RefactoringUtils {
             newFullName to oldFullName
         }.toTypedArray()
         return hashMapOf(*namesPairs)
+    }
+
+    fun extractClassRenamesAndMoves(allRefactorings: List<Refactoring>): Map<String, String> {
+        return allRefactorings.filter {
+            it.refactoringType == RefactoringType.MOVE_CLASS ||
+                    it.refactoringType == RefactoringType.MOVE_RENAME_CLASS
+        }.associate { ref ->
+            when (ref) {
+                is MoveClassRefactoring -> {
+                    ref.originalClassName to ref.movedClassName
+                }
+                is MoveAndRenameClassRefactoring -> {
+                    ref.originalClassName to ref.renamedClassName
+                }
+                else -> {
+                    throw Exception("Unknown class-level refactoring type.")
+                }
+            }
+        }
     }
 }

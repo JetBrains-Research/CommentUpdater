@@ -48,6 +48,8 @@ object ProjectMethodExtractor {
 
         val renameMapping = RefactoringUtils.extractFullNameChanges(fileRefactorings)
 
+        val classRenameMapping = RefactoringUtils.extractClassRenamesAndMoves(allRefactorings)
+
         val changedMethods = mutableListOf<Pair<PsiMethod, MethodUpdateType>>()
 
         val oldMethodsWithNames = extractMethodsWithFullNames(project, before, statisticContext)
@@ -60,8 +62,11 @@ object ProjectMethodExtractor {
             } else {
                 afterName
             }
-
-            if (!oldMethodsWithNames.containsKey(beforeName)) {
+            if (classRenameMapping.any { (_, newClassName) ->
+                    beforeName?.name?.startsWith(newClassName) == true
+                }) {
+                changedMethods.add(newMethod to MethodUpdateType.MOVE)
+            } else if (!oldMethodsWithNames.containsKey(beforeName)) {
                 val isNew =
                     allRefactorings.filter {
                         it.refactoringType == RefactoringType.MOVE_OPERATION ||
