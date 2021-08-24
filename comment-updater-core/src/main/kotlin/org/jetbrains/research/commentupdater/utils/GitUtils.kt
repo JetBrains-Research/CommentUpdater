@@ -10,10 +10,10 @@ fun GitCommit.filterChanges(fileSuffix: String): List<Change> {
         }
         .filter {
             // not null and true
-            it.virtualFile?.name?.endsWith(fileSuffix) == true
+            it.afterRevision?.file?.name?.endsWith(fileSuffix) == true
         }
 }
 
 fun GitRepository.walkAll(): List<GitCommit> {
-    return GitHistoryUtils.history(this.project, this.root, "--all")
+    return GitHistoryUtils.history(this.project, this.root)
 }
