@@ -68,4 +68,9 @@ Where:
 - modelConfig - folder with content
   from [link](https://drive.google.com/drive/folders/1E4XOJHfEWOlHXBPxPu3_bkKfuU4G_N49?usp=sharing)
 - output.json - empty file (where resulting labeled samples from all projects would be stored)
-- stats.json - empty file 
+- stats.json - empty file
+
+
+### Statistics
+
+You can find notebook with the collected projects statistics analysis here: [a relative link](DatasetStatitstics.ipynb)
