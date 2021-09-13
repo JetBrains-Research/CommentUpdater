@@ -212,7 +212,9 @@ class PostProcessing : CliktCommand() {
                         oldCommit = sample.commitId,
                         newCommit = futureSample.commitId,
                         jumpLength = methodBranchHandler.getJumpLen(branch),
-                        newFileName = sample.newFileName
+                        newFileName = sample.newFileName,
+                        oldName = sample.oldMethodName,
+                        newName = sample.newMethodName
                     )
                     datasetSample?.let {
                         sampleWriter.writeSample(it, projectName)
@@ -232,7 +234,9 @@ class PostProcessing : CliktCommand() {
                         oldCommit = sample.commitId,
                         newCommit = "",
                         newFileName = sample.newFileName,
-                        jumpLength = 0
+                        jumpLength = 0,
+                        oldName = sample.oldMethodName,
+                        newName = sample.newMethodName
                     )
                     datasetSample?.let {
                         sampleWriter.writeSample(it, projectName)
@@ -253,7 +257,9 @@ class PostProcessing : CliktCommand() {
         newFileName: String,
         oldComment: String, oldCode: String, newComment: String, newCode: String,
         jumpLength: Int,
-        label: CommentUpdateLabel
+        label: CommentUpdateLabel,
+        oldName: MethodNameWithParam,
+        newName: MethodNameWithParam
     ): DatasetSample? {
         val metrics = methodMetrics(
             oldComment = oldComment, newComment = newComment,
@@ -270,7 +276,9 @@ class PostProcessing : CliktCommand() {
             oldCommit = oldCommit,
             newCommit = newCommit,
             jumpLength = jumpLength,
-            newFileName = newFileName
+            newFileName = newFileName,
+            oldMethodName = oldName,
+            newMethodName = newName
         )
     }
 

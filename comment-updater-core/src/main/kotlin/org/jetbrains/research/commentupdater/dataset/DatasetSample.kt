@@ -41,5 +41,7 @@ data class DatasetSample(
     val metric: MethodMetric,
     val newFileName: String,
     val jumpLength: Int,
-    val label: CommentUpdateLabel
+    val label: CommentUpdateLabel,
+    val oldMethodName: MethodNameWithParam,
+    val newMethodName: MethodNameWithParam
 )
