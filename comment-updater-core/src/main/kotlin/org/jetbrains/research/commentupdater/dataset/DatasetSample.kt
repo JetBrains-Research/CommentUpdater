@@ -40,5 +40,6 @@ data class DatasetSample(
     val newComment: String,
     val metric: MethodMetric,
     val newFileName: String,
+    val jumpLength: Int,
     val label: CommentUpdateLabel
 )

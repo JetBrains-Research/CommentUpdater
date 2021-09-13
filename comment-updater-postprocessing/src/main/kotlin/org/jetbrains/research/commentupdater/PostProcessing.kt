@@ -7,6 +7,7 @@ import com.google.gson.Gson
 import com.google.gson.stream.JsonReader
 import com.intellij.openapi.application.ApplicationStarter
 import com.intellij.openapi.diagnostic.Logger
+import com.jetbrains.rd.util.string.printToString
 import kotlinx.coroutines.sync.Mutex
 import org.jetbrains.research.commentupdater.SampleWriter
 import org.jetbrains.research.commentupdater.StatisticHandler
@@ -28,12 +29,26 @@ class MethodBranchHandler {
     private val branchToInconsistencySample = hashMapOf<Int, RawDatasetSample>()
     private val methodToBranch = hashMapOf<MethodNameWithParam, Int>()
     private val branchSpoiled = hashMapOf<Int, Boolean>()
+    private val branchToCommitNumber = hashMapOf<Int, Int>()
+    private val branchToPreviousCommitNumber = hashMapOf<Int, Int>()
+
+    fun updateCommitNumber(branch: Int) {
+        if (!branchToCommitNumber.containsKey(branch)) {
+            branchToCommitNumber[branch] = 1
+        } else {
+            branchToCommitNumber[branch] = branchToCommitNumber.getOrDefault(branch, 1) + 1
+        }
+    }
+
     fun branchId(methodName: MethodNameWithParam): Int {
-        if (!methodToBranch.containsKey(methodName)) {
+       if (!methodToBranch.containsKey(methodName)) {
             methodToBranch[methodName] = ++newBranch
             branchSpoiled[newBranch] = false
         }
-        return methodToBranch[methodName]!!
+
+        val branch = methodToBranch[methodName]!!
+
+        return branch
     }
 
     fun getInconsistencySample(branch: Int): RawDatasetSample? {
@@ -57,6 +72,13 @@ class MethodBranchHandler {
         val oldId = branchId(oldName)
         methodToBranch[newName] = oldId
         methodToBranch.remove(oldName)
+    }
+
+    fun getJumpLen(branch: Int): Int {
+        val newCommitNumber = branchToPreviousCommitNumber.getOrDefault(branch, 1)
+        branchToPreviousCommitNumber[branch] = branchToCommitNumber[branch]!!
+        return branchToCommitNumber[branch]!! - newCommitNumber
+
     }
 }
 
@@ -172,6 +194,7 @@ class PostProcessing : CliktCommand() {
 
             val commentChanged = sample.oldComment.trim() != sample.newComment.trim()
             val branch = methodBranchHandler.branchId(sample.oldMethodName)
+            methodBranchHandler.updateCommitNumber(branch)
 
             val codeChanged = sample.oldCode.trim() != sample.newCode.trim()
             if (codeChanged && commentChanged) {
@@ -188,6 +211,7 @@ class PostProcessing : CliktCommand() {
                         projectName = projectPath.split(File.separator).last().split('.').first(),
                         oldCommit = sample.commitId,
                         newCommit = futureSample.commitId,
+                        jumpLength = methodBranchHandler.getJumpLen(branch),
                         newFileName = sample.newFileName
                     )
                     datasetSample?.let {
@@ -207,7 +231,8 @@ class PostProcessing : CliktCommand() {
                         projectName = projectPath.split(File.separator).last().split('.').first(),
                         oldCommit = sample.commitId,
                         newCommit = "",
-                        newFileName = sample.newFileName
+                        newFileName = sample.newFileName,
+                        jumpLength = 0
                     )
                     datasetSample?.let {
                         sampleWriter.writeSample(it, projectName)
@@ -227,6 +252,7 @@ class PostProcessing : CliktCommand() {
         projectName: String, oldCommit: String, newCommit: String,
         newFileName: String,
         oldComment: String, oldCode: String, newComment: String, newCode: String,
+        jumpLength: Int,
         label: CommentUpdateLabel
     ): DatasetSample? {
         val metrics = methodMetrics(
@@ -243,6 +269,7 @@ class PostProcessing : CliktCommand() {
             project = projectName,
             oldCommit = oldCommit,
             newCommit = newCommit,
+            jumpLength = jumpLength,
             newFileName = newFileName
         )
     }
